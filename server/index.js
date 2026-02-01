@@ -9,12 +9,14 @@ const app = express();
 // Import routes
 const expenseRoutes = require('./routes/expenseRoutes');
 const userRoutes = require('./routes/userRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 // Middleware
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
+  
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -34,6 +36,7 @@ app.get('/api', (req, res) => {
 // API Routes
 app.use('/api', expenseRoutes);
 app.use('/api', userRoutes);
+app.use('/api/auth', authRoutes);
 
 // Scalar API Documentation
 app.use(
