@@ -1,0 +1,236 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Splitwise Solo API",
+    "description": "API for expense tracking and management",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Development server"
+    }
+  ],
+  "paths": {
+    "/api": {
+      "get": {
+        "summary": "Welcome message",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "summary": "Get all users",
+        "tags": ["Users"],
+        "responses": {
+          "200": {
+            "description": "List of users"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new user",
+        "tags": ["Users"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "example": "John Doe" },
+                  "email": { "type": "string", "example": "john@example.com" },
+                  "phone": { "type": "string", "example": "+1234567890" }
+                },
+                "required": ["name", "email"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created"
+          }
+        }
+      }
+    },
+    "/api/users/{id}": {
+      "get": {
+        "summary": "Get user by ID",
+        "tags": ["Users"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update user",
+        "tags": ["Users"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string" },
+                  "phone": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete user",
+        "tags": ["Users"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted"
+          }
+        }
+      }
+    },
+    "/api/expenses": {
+      "get": {
+        "summary": "Get all expenses",
+        "tags": ["Expenses"],
+        "responses": {
+          "200": {
+            "description": "List of expenses"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new expense",
+        "tags": ["Expenses"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": { "type": "string", "example": "Lunch" },
+                  "amount": { "type": "number", "example": 25.50 },
+                  "category": { "type": "string", "example": "Food" },
+                  "paidBy": { "type": "string", "example": "USER_ID_HERE" }
+                },
+                "required": ["description", "amount", "paidBy"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Expense created"
+          }
+        }
+      }
+    },
+    "/api/expenses/{id}": {
+      "get": {
+        "summary": "Get expense by ID",
+        "tags": ["Expenses"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Expense details"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update expense",
+        "tags": ["Expenses"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": { "type": "string" },
+                  "amount": { "type": "number" },
+                  "category": { "type": "string" },
+                  "paidBy": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Expense updated"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete expense",
+        "tags": ["Expenses"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Expense deleted"
+          }
+        }
+      }
+    }
+  }
+}

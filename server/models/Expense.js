@@ -16,6 +16,11 @@ const ExpenseSchema = new mongoose.Schema({
   category: {
     type: String,
     default: 'General'
+  },
+  paidBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   }
 }, {
   timestamps: true

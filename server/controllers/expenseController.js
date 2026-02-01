@@ -3,7 +3,7 @@ const Expense = require('../models/Expense');
 // Get all expenses
 exports.getAllExpenses = async (req, res) => {
   try {
-    const expenses = await Expense.find().sort({ date: -1 });
+    const expenses = await Expense.find().populate('paidBy', 'name email').sort({ date: -1 });
     res.json(expenses);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -13,7 +13,7 @@ exports.getAllExpenses = async (req, res) => {
 // Get expense by ID
 exports.getExpenseById = async (req, res) => {
   try {
-    const expense = await Expense.findById(req.params.id);
+    const expense = await Expense.findById(req.params.id).populate('paidBy', 'name email');
     if (!expense) {
       return res.status(404).json({ error: 'Expense not found' });
     }
@@ -44,7 +44,7 @@ exports.updateExpense = async (req, res) => {
     );
     if (!expense) {
       return res.status(404).json({ error: 'Expense not found' });
-    }
+    } 
     res.json(expense);
   } catch (error) {
     res.status(400).json({ error: error.message });
