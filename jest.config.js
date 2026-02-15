@@ -10,5 +10,10 @@ module.exports = {
     '**/tests/unit/**/*.test.js',
     '**/tests/integration/**/*.test.js'
   ],
-  verbose: true
+  verbose: true,
+  moduleNameMapper: {
+    '^@scalar/express-api-reference$': '<rootDir>/tests/__mocks__/@scalar/express-api-reference.js'
+  },
+  testTimeout: 10000,
+  forceExit: true
 };

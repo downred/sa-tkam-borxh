@@ -29,8 +29,7 @@ A solo expense tracking application built with Vue.js and Express.js following t
 │
 ├── /tests                     # Testing Suite
 │   ├── /unit                 # Unit tests
-│   ├── /integration          # Integration tests
-│   └── /selenium             # Selenium E2E tests
+│   └── /integration          # Integration tests
 │
 ├── jest.config.js            # Jest configuration
 ├── package.json              # Root package.json for tests
@@ -126,9 +125,6 @@ npm run test:unit
 # Integration tests only
 npm run test:integration
 
-# Selenium E2E tests only
-npm run test:selenium
-
 # With coverage report
 npm run test:coverage
 ```
@@ -152,7 +148,7 @@ npm run test:coverage
 - **Frontend**: Vue.js 3, Vite
 - **Backend**: Express.js, Node.js
 - **Database**: MongoDB, Mongoose
-- **Testing**: Jest, Selenium WebDriver, Supertest
+- **Testing**: Jest, Supertest
 
 ## 📝 Development Scripts
 

@@ -1,6 +1,6 @@
 const User = require('../models/User');
 
-// Get all users
+
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
@@ -10,7 +10,7 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Get user by ID
+
 exports.getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -23,7 +23,7 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// Create new user
+
 exports.createUser = async (req, res) => {
   try {
     const user = new User(req.body);
@@ -34,7 +34,7 @@ exports.createUser = async (req, res) => {
   }
 };
 
-// Update user
+
 exports.updateUser = async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(
@@ -51,7 +51,7 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// Delete user
+
 exports.deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);

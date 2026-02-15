@@ -1,6 +1,6 @@
 const Expense = require('../models/Expense');
 
-// Get all expenses
+
 exports.getAllExpenses = async (req, res) => {
   try {
     const expenses = await Expense.find().populate('paidBy', 'name email').sort({ date: -1 });
@@ -10,7 +10,7 @@ exports.getAllExpenses = async (req, res) => {
   }
 };
 
-// Get expense by ID
+
 exports.getExpenseById = async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id).populate('paidBy', 'name email');
@@ -23,7 +23,7 @@ exports.getExpenseById = async (req, res) => {
   }
 };
 
-// Create new expense
+
 exports.createExpense = async (req, res) => {
   try {
     const expense = new Expense(req.body);
@@ -34,7 +34,7 @@ exports.createExpense = async (req, res) => {
   }
 };
 
-// Update expense
+
 exports.updateExpense = async (req, res) => {
   try {
     const expense = await Expense.findByIdAndUpdate(
@@ -51,7 +51,7 @@ exports.updateExpense = async (req, res) => {
   }
 };
 
-// Delete expense
+
 exports.deleteExpense = async (req, res) => {
   try {
     const expense = await Expense.findByIdAndDelete(req.params.id);

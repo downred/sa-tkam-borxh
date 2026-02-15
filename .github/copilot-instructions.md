@@ -4,7 +4,7 @@
 - **Frontend**: Vue.js (View layer of MVC)
 - **Backend**: Node.js/Express with MongoDB (Controller & Model layers)
 - **Architecture**: MVC (Model-View-Controller)
-- **Testing**: Unit tests, Integration tests, Selenium tests
+- **Testing**: Unit tests, Integration tests
 
 ## Project Structure
 ```
@@ -13,8 +13,7 @@
 ├── /server (Express - Controller & Model)
 ├── /tests (Testing suite)
 │   ├── /unit
-│   ├── /integration
-│   └── /selenium
+│   └── /integration
 └── README.md
 ```
 
@@ -29,4 +28,4 @@
 - Follow MVC architecture strictly
 - Client handles all views and user interface
 - Server handles business logic (controllers) and data (models)
-- Keep tests organized by type (unit, integration, selenium)
+- Keep tests organized by type (unit, integration)
