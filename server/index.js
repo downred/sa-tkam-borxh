@@ -30,7 +30,7 @@ mongoose.connect(MONGODB_URI)
 
 
 app.get('/api', (req, res) => {
-  res.json({ message: 'Welcome to Splitwise Solo API' });
+  res.json({ message: 'Welcome to saTkamBorxh API' });
 });
 
 

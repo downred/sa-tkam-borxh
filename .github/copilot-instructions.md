@@ -1,4 +1,4 @@
-# Splitwise Solo Project - Copilot Instructions
+# saTkamBorxh Project - Copilot Instructions
 
 ## Project Overview
 - **Frontend**: Vue.js (View layer of MVC)
@@ -8,7 +8,7 @@
 
 ## Project Structure
 ```
-/splitwise-solo
+/saTkamBorxh
 ├── /client (Vue.js - View)
 ├── /server (Express - Controller & Model)
 ├── /tests (Testing suite)

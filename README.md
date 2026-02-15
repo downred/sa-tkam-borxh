@@ -1,11 +1,11 @@
-# Splitwise Solo
+# saTkamBorxh
 
 A solo expense tracking application built with Vue.js and Express.js following the MVC architecture.
 
 ## 🏗️ Project Structure
 
 ```
-/splitwise-solo
+/saTkamBorxh
 ├── /client                    # Vue.js Frontend (View)
 │   ├── /src
 │   │   ├── App.vue           # Main Vue component
@@ -72,7 +72,7 @@ Edit `server/.env` file:
 
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/splitwise-solo
+MONGODB_URI=mongodb://localhost:27017/saTkamBorxh
 NODE_ENV=development
 ```
 

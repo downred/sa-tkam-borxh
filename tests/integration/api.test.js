@@ -45,7 +45,7 @@ describe("API", () => {
         // Then it should return success with welcome message
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty("message");
-        expect(response.body.message).toBe("Welcome to Splitwise Solo API");
+        expect(response.body.message).toBe("Welcome to saTkamBorxh API");
       });
     });
   });
