@@ -26,7 +26,19 @@ const routes = [
     path: '/expenses',
     name: 'Expenses',
     component: () => import('../views/Expenses.vue'),
-    meta: { requiresAuth: true }
+    // meta: { requiresAuth: true }
+  },
+  {
+    path: '/create-group',
+    name: 'CreateGroup',
+    component: () => import('../views/CreateGroupView.vue'),
+    // meta: { requiresAuth: true }
+  },
+  {
+    path: '/create-expense',
+    name: 'CreateExpense',
+    component: () => import('../views/CreateExpenseView.vue'),
+    // meta: { requiresAuth: true }
   }
 ]
 
