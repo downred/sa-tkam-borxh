@@ -67,9 +67,9 @@
           type="password"
           label="Confirm Password"
           placeholder="Confirm your password"
-          :has-error="fields.confirmPassword?.isTouched && !fields.confirmPassword?.isValid"
-          :error-message="fields.confirmPassword?.errors?.[0]"
-          @blur="touch('confirmPassword')"
+          :has-error="(fields.confirmPassword?.isTouched && !fields.confirmPassword?.isValid) || passwordMismatch"
+          :error-message="passwordMismatch ? 'Passwords do not match' : fields.confirmPassword?.errors?.[0]"
+          @blur="checkPasswordMatch"
         >
           <template #icon>
             <ShieldCheck />
@@ -112,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useFormValidation } from 'oop-validator'
 import { CircleDollarSign, User, Mail, Lock, ShieldCheck, Loader2 } from 'lucide-vue-next'
 import FormInput from '../components/FormInput.vue'
@@ -137,10 +137,7 @@ const validationConfig = {
     'required',
     { rule: 'min', params: { length: 6 }, message: 'Password must be at least 6 characters' }
   ],
-  confirmPassword: [
-    'required',
-    { rule: 'same', params: { field: 'password' }, message: 'Passwords do not match' }
-  ]
+  confirmPassword: ['required']
 }
 
 // Setup validation with the composable
@@ -152,12 +149,30 @@ const { fields, validate, touch, touchAll } = useFormValidation(
 
 const loading = ref(false)
 const generalError = ref('')
+const passwordMismatch = ref(false)
+
+// Check password match when confirmPassword changes
+watch(() => form.value.confirmPassword, () => {
+  if (fields.value.confirmPassword?.isTouched && form.value.confirmPassword) {
+    passwordMismatch.value = form.value.password !== form.value.confirmPassword
+  }
+})
+
+const checkPasswordMatch = () => {
+  touch('confirmPassword')
+  if (form.value.confirmPassword) {
+    passwordMismatch.value = form.value.password !== form.value.confirmPassword
+  }
+}
 
 const handleRegister = () => {
   touchAll()
   const result = validate()
   
-  if (!result.isValid) return
+  // Check password match manually
+  passwordMismatch.value = form.value.password !== form.value.confirmPassword
+  
+  if (!result.isValid || passwordMismatch.value) return
 
   // TODO: implement register logic
   console.log('Form is valid:', form.value)

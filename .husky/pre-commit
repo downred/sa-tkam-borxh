@@ -1,0 +1,5 @@
+# Run Jest tests (backend)
+npm test
+
+# Run Playwright e2e tests (client)
+cd client && npm run test:e2e
