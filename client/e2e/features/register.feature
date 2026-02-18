@@ -48,3 +48,30 @@ Feature: User Registration
     And I enter "password123" in the confirm password field
     And I check the terms checkbox
     Then I should not see any validation errors
+  Scenario: Show error when terms not accepted
+    When I enter "John Doe" in the name field
+    And I enter "john@example.com" in the email field
+    And I enter "password123" in the password field
+    And I enter "password123" in the confirm password field
+    And I click the submit button
+    Then I should see "You must accept the Terms" error message
+
+  Scenario: Successfully register a new user
+    Given the API will return a successful registration response
+    When I enter "John Doe" in the name field
+    And I enter "john@example.com" in the email field
+    And I enter "password123" in the password field
+    And I enter "password123" in the confirm password field
+    And I check the terms checkbox
+    And I click the submit button
+    Then I should be redirected to the expenses page
+
+  Scenario: Show error when email already exists
+    Given the API will return "User already exists with this email" error
+    When I enter "John Doe" in the name field
+    And I enter "existing@example.com" in the email field
+    And I enter "password123" in the password field
+    And I enter "password123" in the confirm password field
+    And I check the terms checkbox
+    And I click the submit button
+    Then I should see "User already exists with this email" error message

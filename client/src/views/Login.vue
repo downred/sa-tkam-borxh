@@ -84,9 +84,15 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useFormValidation } from 'oop-validator'
 import { CircleDollarSign, Mail, Lock, Loader2 } from 'lucide-vue-next'
 import FormInput from '../components/FormInput.vue'
+import { authService } from '../services/authService'
+import { useAuthStore } from '../stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 // Form data
 const form = ref({
@@ -114,14 +120,32 @@ const { fields, validate, touch, touchAll } = useFormValidation(
 const loading = ref(false)
 const generalError = ref('')
 
-const handleLogin = () => {
+const handleLogin = async () => {
   touchAll()
   const result = validate()
   
   if (!result.isValid) return
 
-  // TODO: implement login logic
-  console.log('Form is valid:', form.value)
+  loading.value = true
+  generalError.value = ''
+
+  try {
+    const response = await authService.login({
+      email: form.value.email,
+      password: form.value.password
+    })
+
+    // Store user data and token
+    authStore.setUser(response.data)
+    authStore.setToken(response.data.token)
+
+    // Redirect to expenses
+    router.push('/expenses')
+  } catch (error) {
+    generalError.value = error.response?.data?.error || 'Login failed. Please try again.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

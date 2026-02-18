@@ -363,3 +363,93 @@ Then('I should see split amounts displayed', async ({ page }) => {
   // Check that split amounts section is visible
   await expect(page.locator('.split-amounts')).toBeVisible();
 });
+// API Mocking steps for authentication
+Given('the API will return a successful registration response', async ({ page }) => {
+  await page.route('**/api/auth/register', async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          _id: 'mock-user-id',
+          name: 'John Doe',
+          email: 'john@example.com',
+          token: 'mock-jwt-token'
+        }
+      })
+    });
+  });
+});
+
+Given('the API will return a successful login response', async ({ page }) => {
+  await page.route('**/api/auth/login', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          _id: 'mock-user-id',
+          name: 'Test User',
+          email: 'test@example.com',
+          token: 'mock-jwt-token'
+        }
+      })
+    });
+  });
+});
+
+Given('the API will return {string} error', async ({ page }, errorMessage) => {
+  await page.route('**/api/auth/**', async (route) => {
+    await route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: errorMessage
+      })
+    });
+  });
+});
+
+Given('the API will delay response for {int} second(s)', async ({ page }, seconds) => {
+  await page.route('**/api/auth/**', async (route) => {
+    await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          _id: 'mock-user-id',
+          name: 'Test User',
+          email: 'test@example.com',
+          token: 'mock-jwt-token'
+        }
+      })
+    });
+  });
+});
+
+// Redirect assertions
+Then('I should be redirected to the expenses page', async ({ page }) => {
+  await expect(page).toHaveURL(/\/expenses/);
+});
+
+Then('I should be redirected to the dashboard', async ({ page }) => {
+  await expect(page).toHaveURL(/\/dashboard/);
+});
+
+// Error message assertions
+Then('I should see {string} error message', async ({ page }, errorMessage) => {
+  await expect(page.locator('.error-box')).toContainText(errorMessage);
+});
+
+// Loading state assertions
+Then('I should see the loading spinner', async ({ page }) => {
+  await expect(page.locator('.btn-loading')).toBeVisible();
+});
+
+Then('the submit button should be disabled', async ({ page }) => {
+  await expect(page.locator('button[type="submit"]')).toBeDisabled();
+});

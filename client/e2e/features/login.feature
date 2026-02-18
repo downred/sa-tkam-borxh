@@ -42,3 +42,23 @@ Feature: User Login
   Scenario: Toggle remember me checkbox
     When I check the remember me checkbox
     Then the remember me checkbox should be checked
+  Scenario: Successfully login with valid credentials
+    Given the API will return a successful login response
+    When I enter "test@example.com" in the email field
+    And I enter "password123" in the password field
+    And I click the submit button
+    Then I should be redirected to the expenses page
+
+  Scenario: Show error for invalid credentials
+    Given the API will return "Invalid credentials" error
+    When I enter "test@example.com" in the email field
+    And I enter "wrongpassword" in the password field
+    And I click the submit button
+    Then I should see "Invalid credentials" error message
+
+  Scenario: Show loading state during login
+    Given the API will delay response for 1 second
+    When I enter "test@example.com" in the email field
+    And I enter "password123" in the password field
+    And I click the submit button
+    Then I should see the loading spinner

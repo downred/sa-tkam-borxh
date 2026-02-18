@@ -113,9 +113,15 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useFormValidation } from 'oop-validator'
 import { CircleDollarSign, User, Mail, Lock, ShieldCheck, Loader2 } from 'lucide-vue-next'
 import FormInput from '../components/FormInput.vue'
+import { authService } from '../services/authService'
+import { useAuthStore } from '../stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 // Form data
 const form = ref({
@@ -165,7 +171,7 @@ const checkPasswordMatch = () => {
   }
 }
 
-const handleRegister = () => {
+const handleRegister = async () => {
   touchAll()
   const result = validate()
   
@@ -174,8 +180,33 @@ const handleRegister = () => {
   
   if (!result.isValid || passwordMismatch.value) return
 
-  // TODO: implement register logic
-  console.log('Form is valid:', form.value)
+  // Check terms acceptance
+  if (!form.value.acceptTerms) {
+    generalError.value = 'You must accept the Terms of Service and Privacy Policy'
+    return
+  }
+
+  loading.value = true
+  generalError.value = ''
+
+  try {
+    const response = await authService.register({
+      name: form.value.name,
+      email: form.value.email,
+      password: form.value.password
+    })
+
+    // Store user data and token
+    authStore.setUser(response.data)
+    authStore.setToken(response.data.token)
+
+    // Redirect to expenses
+    router.push('/expenses')
+  } catch (error) {
+    generalError.value = error.response?.data?.error || 'Registration failed. Please try again.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

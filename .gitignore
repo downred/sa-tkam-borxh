@@ -5,3 +5,8 @@ dist/
 coverage/
 .env
 .vscode/
+# Playwright
+test-results/
+playwright-report/
+client/test-results/
+client/playwright-report/
