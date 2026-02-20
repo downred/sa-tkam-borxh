@@ -10,6 +10,7 @@ const app = express();
 const expenseRoutes = require('./routes/expenseRoutes');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
+const groupRoutes = require('./routes/groupRoutes');
 
 
 app.use(cors({
@@ -37,6 +38,7 @@ app.get('/api', (req, res) => {
 app.use('/api', expenseRoutes);
 app.use('/api', userRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/groups', groupRoutes);
 
 
 app.use(

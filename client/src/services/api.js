@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 // Storage abstraction for testability
 export const storage = {
@@ -42,9 +42,15 @@ export const createApiInstance = (storageImpl = storage, navigationImpl = naviga
   instance.interceptors.response.use(
     (response) => response,
     (error) => {
+      // Only redirect on 401 if not already on login/register pages
+      // (those 401s are from invalid credentials, not expired tokens)
       if (error.response?.status === 401) {
-        storageImpl.removeToken()
-        navigationImpl.redirectTo('/login')
+        const isAuthPage = window.location.pathname === '/login' || 
+                           window.location.pathname === '/register'
+        if (!isAuthPage) {
+          storageImpl.removeToken()
+          navigationImpl.redirectTo('/login')
+        }
       }
       return Promise.reject(error)
     }

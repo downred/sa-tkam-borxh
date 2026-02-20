@@ -27,6 +27,13 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Validate password length 
+    if (password.length < 6) {
+      return res.status(400).json({ 
+        error: 'Password must be at least 6 characters' 
+      });
+    }
+
     const userExists = await User.findOne({ email });
 
     if (userExists) {

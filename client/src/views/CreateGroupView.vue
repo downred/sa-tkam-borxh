@@ -5,9 +5,15 @@
     </div>
 
     <div class="create-group-card">
-      <CreateGroup v-if="step === 'create'" @created="handleCreated" />
+      <CreateGroup 
+        v-if="step === 'create'" 
+        :loading="groupsStore.loading"
+        :error="groupsStore.error"
+        @created="handleCreated" 
+      />
       <AddGroupMembers 
         v-else 
+        :group-id="createdGroupId"
         @skip="handleFinish" 
         @done="handleFinish" 
       />
@@ -20,19 +26,65 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import CreateGroup from '../components/CreateGroup.vue'
 import AddGroupMembers from '../components/AddGroupMembers.vue'
+import { useGroupsStore } from '../stores/groups'
 
 const router = useRouter()
+const groupsStore = useGroupsStore()
 const step = ref('create')
-const groupData = ref(null)
+const createdGroupId = ref(null)
 
-const handleCreated = (data) => {
-  groupData.value = data
-  step.value = 'members'
+const handleCreated = async (data) => {
+  try {
+    // Map frontend type values to backend enum values
+    const typeMap = {
+      trip: 'Trip',
+      home: 'Home',
+      family: 'Family',
+      subscription: 'Subscription',
+      other: 'Other'
+    }
+    
+    const groupData = {
+      name: data.name,
+      type: typeMap[data.type] || 'Other',
+      settleUpReminders: data.settleReminders
+    }
+    
+    // Add trip dates if it's a trip
+    if (data.type === 'trip') {
+      if (data.tripStartDate) groupData.startDate = data.tripStartDate
+      if (data.tripEndDate) groupData.endDate = data.tripEndDate
+    }
+    
+    // Add renewal date if it's a subscription
+    if (data.type === 'subscription' && data.renewalDate) {
+      groupData.renewalDate = data.renewalDate
+    }
+    
+    const createdGroup = await groupsStore.createGroup(groupData)
+    createdGroupId.value = createdGroup._id
+    step.value = 'members'
+  } catch (error) {
+    // Error is already set in the store
+    console.error('Failed to create group:', error)
+  }
 }
 
-const handleFinish = (members) => {
-  console.log('Group created:', groupData.value, 'Members:', members)
-  router.push('/expenses')
+const handleFinish = async (members) => {
+  if (members && createdGroupId.value) {
+    try {
+      // Add selected friends to the group
+      if (members.selectedFriends?.length > 0) {
+        for (const friendId of members.selectedFriends) {
+          await groupsStore.addMember(createdGroupId.value, friendId)
+        }
+      }
+      // TODO: Handle addedEmails (invite by email)
+    } catch (error) {
+      console.error('Failed to add members:', error)
+    }
+  }
+  router.push('/groups')
 }
 </script>
 

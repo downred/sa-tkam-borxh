@@ -110,14 +110,20 @@
       </div>
     </div>
 
+    <!-- Error Message -->
+    <div v-if="error" class="error-message">
+      {{ error }}
+    </div>
+
     <!-- Create Button -->
     <button 
       type="button" 
       class="btn-create" 
-      :disabled="!canCreate"
+      :disabled="!canCreate || loading"
       @click="handleCreate"
     >
-      Create Group
+      <span v-if="loading" class="btn-loading">Creating...</span>
+      <span v-else>Create Group</span>
     </button>
   </div>
 </template>
@@ -126,6 +132,17 @@
 import { ref, computed } from 'vue'
 import { Users, Plane, Home, Heart, CreditCard, MoreHorizontal, Bell, Clock } from 'lucide-vue-next'
 import FormInput from './FormInput.vue'
+
+const props = defineProps({
+  loading: {
+    type: Boolean,
+    default: false
+  },
+  error: {
+    type: String,
+    default: null
+  }
+})
 
 const groupName = ref('')
 const selectedType = ref('')
@@ -289,10 +306,19 @@ const handleCreate = () => {
   }
 }
 
+// Error Message
+.error-message {
+  @apply p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg;
+}
+
 // Create Button
 .btn-create {
   @apply w-full py-3.5 px-4 bg-primary-600 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/30 transition-all;
   @apply hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
   @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-600;
+}
+
+.btn-loading {
+  @apply inline-flex items-center;
 }
 </style>

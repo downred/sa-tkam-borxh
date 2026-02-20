@@ -200,8 +200,8 @@ const handleRegister = async () => {
     authStore.setUser(response.data)
     authStore.setToken(response.data.token)
 
-    // Redirect to expenses
-    router.push('/expenses')
+    // Redirect to groups
+    router.push('/groups')
   } catch (error) {
     generalError.value = error.response?.data?.error || 'Registration failed. Please try again.'
   } finally {

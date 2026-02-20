@@ -43,13 +43,26 @@
     <!-- Friends List -->
     <div class="friends-list">
       <label class="friends-list__label">Your Friends</label>
-      <div class="friends-list__items">
+      
+      <!-- Loading State -->
+      <div v-if="loadingFriends" class="friends-list__loading">
+        <Loader2 class="animate-spin" />
+        <span>Loading friends...</span>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else-if="friends.length === 0" class="friends-list__empty">
+        <p>No friends yet. Add friends from the Friends page.</p>
+      </div>
+
+      <!-- Friends -->
+      <div v-else class="friends-list__items">
         <div
           v-for="friend in friends"
-          :key="friend.id"
+          :key="friend._id"
           class="friend-item"
-          :class="{ 'friend-item--selected': selectedFriends.includes(friend.id) }"
-          @click="toggleFriend(friend.id)"
+          :class="{ 'friend-item--selected': selectedFriends.includes(friend._id) }"
+          @click="toggleFriend(friend._id)"
         >
           <div class="friend-item__avatar">
             {{ friend.name.charAt(0) }}
@@ -59,7 +72,7 @@
             <p class="friend-item__email">{{ friend.email }}</p>
           </div>
           <div class="friend-item__check">
-            <Check v-if="selectedFriends.includes(friend.id)" />
+            <Check v-if="selectedFriends.includes(friend._id)" />
           </div>
         </div>
       </div>
@@ -83,9 +96,17 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Mail, UserPlus, Link, Copy, Check } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import { Mail, UserPlus, Link, Copy, Check, Loader2 } from 'lucide-vue-next'
 import FormInput from './FormInput.vue'
+import friendService from '../services/friendService'
+
+const props = defineProps({
+  groupId: {
+    type: String,
+    default: null
+  }
+})
 
 const emit = defineEmits(['skip', 'done'])
 
@@ -93,17 +114,29 @@ const email = ref('')
 const addedEmails = ref([])
 const copied = ref(false)
 const selectedFriends = ref([])
+const friends = ref([])
+const loadingFriends = ref(true)
 
-const groupLink = 'https://satkamborxh.app/join/abc123'
+const groupLink = computed(() => {
+  const baseUrl = window.location.origin
+  return props.groupId 
+    ? `${baseUrl}/join/${props.groupId}` 
+    : `${baseUrl}/join/abc123`
+})
 
-// Hardcoded friends
-const friends = [
-  { id: 1, name: 'John Doe', email: 'john@example.com' },
-  { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
-  { id: 3, name: 'Mike Johnson', email: 'mike@example.com' },
-  { id: 4, name: 'Sarah Williams', email: 'sarah@example.com' },
-  { id: 5, name: 'Alex Brown', email: 'alex@example.com' }
-]
+const fetchFriends = async () => {
+  try {
+    loadingFriends.value = true
+    friends.value = await friendService.getAll()
+  } catch (error) {
+    console.error('Failed to load friends:', error)
+    friends.value = []
+  } finally {
+    loadingFriends.value = false
+  }
+}
+
+onMounted(fetchFriends)
 
 const toggleFriend = (id) => {
   const index = selectedFriends.value.indexOf(id)
@@ -208,6 +241,18 @@ const handleDone = () => {
 
   &__items {
     @apply space-y-2 max-h-64 overflow-y-auto;
+  }
+
+  &__loading {
+    @apply flex items-center justify-center gap-2 py-8 text-secondary-500;
+    
+    svg {
+      @apply w-5 h-5;
+    }
+  }
+
+  &__empty {
+    @apply py-8 text-center text-secondary-500 text-sm;
   }
 }
 

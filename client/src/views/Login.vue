@@ -121,6 +121,8 @@ const loading = ref(false)
 const generalError = ref('')
 
 const handleLogin = async () => {
+  console.log("bismillah");
+  
   touchAll()
   const result = validate()
   
@@ -135,13 +137,18 @@ const handleLogin = async () => {
       password: form.value.password
     })
 
+    console.log({response});
+    
+
     // Store user data and token
     authStore.setUser(response.data)
     authStore.setToken(response.data.token)
 
-    // Redirect to expenses
-    router.push('/expenses')
+    // Redirect to groups
+    router.push('/groups')
   } catch (error) {
+    console.log({error});
+    
     generalError.value = error.response?.data?.error || 'Login failed. Please try again.'
   } finally {
     loading.value = false

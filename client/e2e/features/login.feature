@@ -47,7 +47,7 @@ Feature: User Login
     When I enter "test@example.com" in the email field
     And I enter "password123" in the password field
     And I click the submit button
-    Then I should be redirected to the expenses page
+    Then I should be redirected to the groups page
 
   Scenario: Show error for invalid credentials
     Given the API will return "Invalid credentials" error

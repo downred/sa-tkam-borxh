@@ -64,7 +64,7 @@ Feature: User Registration
     And I enter "password123" in the confirm password field
     And I check the terms checkbox
     And I click the submit button
-    Then I should be redirected to the expenses page
+    Then I should be redirected to the groups page
 
   Scenario: Show error when email already exists
     Given the API will return "User already exists with this email" error

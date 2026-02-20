@@ -42,4 +42,4 @@ Feature: Add Group Members
 
   Scenario: Skip for now button navigates away
     When I click the Skip for Now button
-    Then I should be on the expenses page
+    Then I should be on the groups page

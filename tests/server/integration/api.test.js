@@ -253,4 +253,112 @@ describe("API", () => {
       });
     });
   });
+
+  describe("Password Boundary Value Analysis", () => {
+    describe("User Registration Password Length", () => {
+      describe("when password is at minimum boundary (6 chars)", () => {
+        it("should accept the password", async () => {
+          // Given a registration request with exactly 6 character password
+          User.findOne = jest.fn().mockResolvedValue(null);
+          User.create = jest.fn().mockResolvedValue({
+            _id: "123",
+            name: "Test User",
+            email: "test@example.com",
+          });
+
+          const response = await request(app).post("/api/auth/register").send({
+            name: "Test User",
+            email: "test@example.com",
+            password: "123456", // Exactly 6 characters
+          });
+
+          // Then it should succeed
+          expect(response.status).toBe(201);
+        });
+      });
+
+      describe("when password is below minimum boundary (5 chars)", () => {
+        it("should reject the password", async () => {
+          // Given a registration request with 5 character password
+          const response = await request(app).post("/api/auth/register").send({
+            name: "Test User",
+            email: "test@example.com",
+            password: "12345", // Below minimum
+          });
+
+          // Then it should return validation error
+          expect(response.status).toBe(400);
+        });
+      });
+
+      describe("when password is above minimum boundary (7 chars)", () => {
+        it("should accept the password", async () => {
+          // Given a registration request with 7 character password
+          User.findOne = jest.fn().mockResolvedValue(null);
+          User.create = jest.fn().mockResolvedValue({
+            _id: "123",
+            name: "Test User",
+            email: "test@example.com",
+          });
+
+          const response = await request(app).post("/api/auth/register").send({
+            name: "Test User",
+            email: "test@example.com",
+            password: "1234567", // Above minimum
+          });
+
+          // Then it should succeed
+          expect(response.status).toBe(201);
+        });
+      });
+    });
+  });
+
+  describe("Get Current User (Auth Me)", () => {
+    describe("when token is valid", () => {
+      it("should return user data", async () => {
+        // Given a valid authenticated user
+        const jwt = require("../../../server/node_modules/jsonwebtoken");
+        const token = jwt.sign({ id: "123" }, process.env.JWT_SECRET);
+
+        User.findById = jest.fn().mockResolvedValue({
+          _id: "123",
+          name: "John Doe",
+          email: "john@example.com",
+        });
+
+        // When requesting current user
+        const response = await request(app)
+          .get("/api/auth/me")
+          .set("Authorization", `Bearer ${token}`);
+
+        // Then it should return user data
+        expect(response.status).toBe(200);
+        expect(response.body.data).toHaveProperty("name");
+        expect(response.body.data).toHaveProperty("email");
+      });
+    });
+
+    describe("when token is missing", () => {
+      it("should return 401 status", async () => {
+        // When requesting without token
+        const response = await request(app).get("/api/auth/me");
+
+        // Then it should return unauthorized
+        expect(response.status).toBe(401);
+      });
+    });
+
+    describe("when token is invalid", () => {
+      it("should return 401 status", async () => {
+        // When requesting with invalid token
+        const response = await request(app)
+          .get("/api/auth/me")
+          .set("Authorization", "Bearer invalid-token");
+
+        // Then it should return unauthorized
+        expect(response.status).toBe(401);
+      });
+    });
+  });
 });

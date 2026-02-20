@@ -9,12 +9,14 @@ const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('../views/Login.vue')
+    component: () => import('../views/Login.vue'),
+    meta: { guestOnly: true }
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('../views/Register.vue')
+    component: () => import('../views/Register.vue'),
+    meta: { guestOnly: true }
   },
   {
     path: '/dashboard',
@@ -26,19 +28,37 @@ const routes = [
     path: '/expenses',
     name: 'Expenses',
     component: () => import('../views/Expenses.vue'),
-    // meta: { requiresAuth: true }
+    meta: { requiresAuth: true }
   },
   {
     path: '/create-group',
     name: 'CreateGroup',
     component: () => import('../views/CreateGroupView.vue'),
-    // meta: { requiresAuth: true }
+    meta: { requiresAuth: true }
   },
   {
     path: '/create-expense',
     name: 'CreateExpense',
     component: () => import('../views/CreateExpenseView.vue'),
-    // meta: { requiresAuth: true }
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/account',
+    name: 'Account',
+    component: () => import('../views/Account.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/friends',
+    name: 'Friends',
+    component: () => import('../views/Friends.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/groups',
+    name: 'Groups',
+    component: () => import('../views/Groups.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
@@ -51,9 +71,15 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const isAuthenticated = localStorage.getItem('token')
   
+  // Redirect to login if route requires auth and user is not authenticated
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login')
-  } else {
+  } 
+  // Redirect to groups if route is guest-only and user is already authenticated
+  else if (to.meta.guestOnly && isAuthenticated) {
+    next('/groups')
+  } 
+  else {
     next()
   }
 })

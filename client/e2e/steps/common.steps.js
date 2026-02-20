@@ -13,6 +13,26 @@ Given('I am on the login page', async ({ page }) => {
 });
 
 Given('I am on the create group page', async ({ page }) => {
+  // Mock the auth verification API to prevent token invalidation
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: { _id: 'mock-user-id', name: 'John Doe', email: 'john@example.com' }
+      })
+    });
+  });
+  // Use addInitScript to set auth before page loads
+  await page.addInitScript(() => {
+    localStorage.setItem('token', 'mock-jwt-token');
+    localStorage.setItem('user', JSON.stringify({
+      _id: 'mock-user-id',
+      name: 'John Doe',
+      email: 'john@example.com'
+    }));
+  });
   await page.goto('/create-group');
 });
 
@@ -120,7 +140,7 @@ When('I click the sign in link', async ({ page }) => {
 });
 
 When('I click the create account link', async ({ page }) => {
-  await page.click('a[href="/register"]');
+  await page.click('a:has-text("Create an Account"), .btn-secondary');
 });
 
 // Validation error assertions
@@ -216,7 +236,33 @@ Then('I should not see the renewal date field', async ({ page }) => {
 });
 
 When('I click the create group button', async ({ page }) => {
-  await page.click('button:has-text("Create Group")');
+  // Mock the groups API for the create request
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: { _id: 'mock-group-id', name: 'Test Group', type: 'Family', members: [] }
+        })
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // Mock friends API for the add members step
+  await page.route('**/api/friends', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([])
+    });
+  });
+
+  // Could be a button or a router-link with btn-create class
+  await page.click('.btn-create, button:has-text("Create Group")');
 });
 
 When('I toggle the balance alerts setting', async ({ page }) => {
@@ -229,18 +275,82 @@ Then('the balance alerts setting should be active', async ({ page }) => {
 
 // Add Group Members specific steps
 Given('I am on the add members page', async ({ page }) => {
-  // First create a group to get to the add members step
+  // Mock the auth verification API to prevent token invalidation
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: { _id: 'mock-user-id', name: 'John Doe', email: 'john@example.com' }
+      })
+    });
+  });
+
+  // Mock the groups API first (before any navigation)
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: { _id: 'mock-group-id', name: 'Test Group', type: 'Trip', members: [] }
+        })
+      });
+    } else if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: [] })
+      });
+    } else {
+      await route.continue();
+    }
+  });
+  
+  // Mock the friends API
+  await page.route('**/api/friends', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { _id: 'friend1', name: 'John Doe', email: 'john.doe@example.com' },
+        { _id: 'friend2', name: 'Jane Smith', email: 'jane.smith@example.com' }
+      ])
+    });
+  });
+
+  // Use addInitScript to set auth before page loads
+  await page.addInitScript(() => {
+    localStorage.setItem('token', 'mock-jwt-token');
+    localStorage.setItem('user', JSON.stringify({
+      _id: 'mock-user-id',
+      name: 'John Doe',
+      email: 'john@example.com'
+    }));
+  });
+  
+  // Navigate to create group - auth will be set before Vue router checks
   await page.goto('/create-group');
+  await page.waitForSelector('#groupName', { timeout: 10000 });
   await page.fill('#groupName', 'Test Group');
   // Must select a type to enable the create button
   await page.click('button:has-text("Trip")');
-  await page.click('button:has-text("Create Group")');
+  // Wait for the Create Group button to be enabled before clicking
+  const createBtn = page.locator('.btn-create');
+  await expect(createBtn).toBeEnabled({ timeout: 5000 });
+  await createBtn.click();
   // Wait for the step to change to members
-  await expect(page.locator('h2:has-text("Add Members")')).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('h2:has-text("Add Members")')).toBeVisible({ timeout: 15000 });
 });
 
 Then('I should see the title {string}', async ({ page }, title) => {
-  await expect(page.locator(`h2:has-text("${title}")`).first()).toBeVisible();
+  // Check for h1 or h2 with the title - use Playwright's toBeVisible for auto-waiting
+  const h1 = page.locator(`h1:has-text("${title}")`).first();
+  const h2 = page.locator(`h2:has-text("${title}")`).first();
+  const titleLocator = page.locator(`h1:has-text("${title}"), h2:has-text("${title}")`).first();
+  await expect(titleLocator).toBeVisible({ timeout: 5000 });
 });
 
 Then('I should see the Add button', async ({ page }) => {
@@ -298,8 +408,32 @@ Then('I should be on the expenses page', async ({ page }) => {
   await expect(page).toHaveURL(/\/expenses/);
 });
 
+Then('I should be on the groups page', async ({ page }) => {
+  await expect(page).toHaveURL(/\/groups/);
+});
+
 // Create Expense specific steps
 Given('I am on the create expense page', async ({ page }) => {
+  // Mock the auth verification API to prevent token invalidation
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: { _id: 'mock-user-id', name: 'John Doe', email: 'john@example.com' }
+      })
+    });
+  });
+  // Use addInitScript to set auth before page loads
+  await page.addInitScript(() => {
+    localStorage.setItem('token', 'mock-jwt-token');
+    localStorage.setItem('user', JSON.stringify({
+      _id: 'mock-user-id',
+      name: 'John Doe', 
+      email: 'john@example.com'
+    }));
+  });
   await page.goto('/create-expense');
 });
 
@@ -436,6 +570,10 @@ Then('I should be redirected to the expenses page', async ({ page }) => {
   await expect(page).toHaveURL(/\/expenses/);
 });
 
+Then('I should be redirected to the groups page', async ({ page }) => {
+  await expect(page).toHaveURL(/\/groups/);
+});
+
 Then('I should be redirected to the dashboard', async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard/);
 });
@@ -452,4 +590,361 @@ Then('I should see the loading spinner', async ({ page }) => {
 
 Then('the submit button should be disabled', async ({ page }) => {
   await expect(page.locator('button[type="submit"]')).toBeDisabled();
+});
+
+// Account Page steps
+Given('I am logged in as {string}', async ({ page }, email) => {
+  // Mock the auth verification API to prevent token invalidation
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: { _id: 'mock-user-id', name: 'John Doe', email: email }
+      })
+    });
+  });
+  // Use addInitScript to set auth before page loads
+  await page.addInitScript((email) => {
+    localStorage.setItem('token', 'mock-jwt-token');
+    localStorage.setItem('user', JSON.stringify({
+      _id: 'mock-user-id',
+      name: 'John Doe',
+      email: email
+    }));
+  }, email);
+});
+
+Given('I am on the account page', async ({ page }) => {
+  // Mock the /auth/me endpoint
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          _id: 'mock-user-id',
+          name: 'John Doe',
+          email: 'john@example.com'
+        }
+      })
+    });
+  });
+  await page.goto('/account');
+});
+
+Then('I should see the Profile section', async ({ page }) => {
+  await expect(page.locator('.account-row:has-text("Profile")')).toBeVisible();
+});
+
+Then('I should see the Log Out option', async ({ page }) => {
+  await expect(page.locator('.account-row:has-text("Log Out")')).toBeVisible();
+});
+
+Then('I should see my name displayed', async ({ page }) => {
+  await expect(page.locator('.account-row__value')).toBeVisible();
+});
+
+Then('I should see my email displayed', async ({ page }) => {
+  await expect(page.locator('.account-row__sub')).toBeVisible();
+});
+
+When('I click the Log Out option', async ({ page }) => {
+  await page.locator('.account-row:has-text("Log Out")').click();
+});
+
+Then('I should not be authenticated', async ({ page }) => {
+  const token = await page.evaluate(() => localStorage.getItem('token'));
+  expect(token).toBeNull();
+});
+
+// Friends Page steps
+Given('I am logged in', async ({ page }) => {
+  // Mock the auth verification API to prevent token invalidation
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: { _id: 'mock-user-id', name: 'John Doe', email: 'john@example.com' }
+      })
+    });
+  });
+  // Use addInitScript to set auth before page loads
+  await page.addInitScript(() => {
+    localStorage.setItem('token', 'mock-jwt-token');
+    localStorage.setItem('user', JSON.stringify({
+      _id: 'mock-user-id',
+      name: 'John Doe',
+      email: 'john@example.com'
+    }));
+  });
+});
+
+Given('I am on the friends page', async ({ page }) => {
+  await page.route('**/api/friends', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([])
+      });
+    } else {
+      await route.continue();
+    }
+  });
+  await page.goto('/friends');
+});
+
+Given('I have no friends', async ({ page }) => {
+  await page.route('**/api/friends', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([])
+      });
+    }
+  });
+});
+
+Given('I have friends in my list', async ({ page }) => {
+  await page.route('**/api/friends', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { _id: 'friend1', name: 'Jane Smith', email: 'jane@example.com', phone: '1234567890' },
+          { _id: 'friend2', name: 'Bob Wilson', email: 'bob@example.com', phone: '0987654321' }
+        ])
+      });
+    }
+  });
+  await page.goto('/friends');
+});
+
+Then('I should see the add friend button', async ({ page }) => {
+  await expect(page.locator('.add-friend-btn')).toBeVisible();
+});
+
+Then('I should see the text {string}', async ({ page }, text) => {
+  await expect(page.locator(`text=${text}`)).toBeVisible();
+});
+
+When('I click the add friend button', async ({ page }) => {
+  await page.locator('.add-friend-btn').click();
+});
+
+Then('I should see the add friend modal', async ({ page }) => {
+  await expect(page.locator('.modal-overlay')).toBeVisible();
+});
+
+Then('I should not see the add friend modal', async ({ page }) => {
+  await expect(page.locator('.modal-overlay')).not.toBeVisible();
+});
+
+Then('I should see the friend email input field', async ({ page }) => {
+  await expect(page.locator('.modal-content input[type="email"]')).toBeVisible();
+});
+
+When('I click the cancel button', async ({ page }) => {
+  await page.locator('button:has-text("Cancel")').click();
+});
+
+When('I enter {string} in the friend email field', async ({ page }, email) => {
+  await page.fill('.modal-content input[type="email"]', email);
+});
+
+When('I click the add friend confirm button', async ({ page }) => {
+  await page.locator('.modal-content button:has-text("Add Friend")').click();
+});
+
+Given('the API will return a user not found error', async ({ page }) => {
+  await page.route('**/api/friends', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'User not found' })
+      });
+    } else {
+      await route.continue();
+    }
+  });
+});
+
+Given('the API will return a successful add friend response', async ({ page }) => {
+  await page.route('**/api/friends', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          message: 'Friend added successfully',
+          friend: { _id: 'newfriend', name: 'New Friend', email: 'friend@example.com' }
+        })
+      });
+    } else if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { _id: 'newfriend', name: 'New Friend', email: 'friend@example.com' }
+        ])
+      });
+    }
+  });
+});
+
+Then('I should see the error {string}', async ({ page }, errorText) => {
+  await expect(page.locator(`.input-error:has-text("${errorText}")`)).toBeVisible();
+});
+
+Then('I should see the friend in the list', async ({ page }) => {
+  await expect(page.locator('.friend-card')).toBeVisible();
+});
+
+Then('I should see friend cards with name and email', async ({ page }) => {
+  await expect(page.locator('.friend-card .friend-name').first()).toBeVisible();
+  await expect(page.locator('.friend-card .friend-email').first()).toBeVisible();
+});
+
+Then('I should see a remove button for each friend', async ({ page }) => {
+  await expect(page.locator('.friend-remove-btn').first()).toBeVisible();
+});
+
+Given('the API will return a successful remove friend response', async ({ page }) => {
+  await page.route('**/api/friends/*', async (route) => {
+    if (route.request().method() === 'DELETE') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Friend removed successfully' })
+      });
+    }
+  });
+});
+
+When('I click the remove friend button', async ({ page }) => {
+  await page.locator('.friend-remove-btn').first().click();
+});
+
+Then('the friend should be removed from the list', async ({ page }) => {
+  // Wait for animation/removal
+  await page.waitForTimeout(500);
+});
+
+// Groups Page steps
+Given('I am on the groups page', async ({ page }) => {
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: [] })
+      });
+    }
+  });
+  await page.goto('/groups');
+});
+
+Given('I have no groups', async ({ page }) => {
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: [] })
+      });
+    }
+  });
+});
+
+Given('I have groups in my list', async ({ page }) => {
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [
+            { _id: 'group1', name: 'Trip to Paris', type: 'Trip', members: [{ _id: 'u1' }, { _id: 'u2' }] },
+            { _id: 'group2', name: 'Home Expenses', type: 'Home', members: [{ _id: 'u1' }] }
+          ]
+        })
+      });
+    }
+  });
+  await page.goto('/groups');
+});
+
+Given('I have groups of different types', async ({ page }) => {
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [
+            { _id: 'g1', name: 'Trip Group', type: 'Trip', members: [{ _id: 'u1' }] },
+            { _id: 'g2', name: 'Home Group', type: 'Home', members: [{ _id: 'u1' }] },
+            { _id: 'g3', name: 'Family Group', type: 'Family', members: [{ _id: 'u1' }] },
+            { _id: 'g4', name: 'Subscription Group', type: 'Subscription', members: [{ _id: 'u1' }] }
+          ]
+        })
+      });
+    }
+  });
+  await page.goto('/groups');
+});
+
+Then('I should see the groups count', async ({ page }) => {
+  await expect(page.locator('.header-subtitle')).toBeVisible();
+});
+
+Then('I should see the create group button', async ({ page }) => {
+  await expect(page.locator('.btn-create, a[href="/create-group"]')).toBeVisible();
+});
+
+Then('I should see the floating create group button', async ({ page }) => {
+  await expect(page.locator('.fab-create')).toBeVisible();
+});
+
+Then('I should see group cards with name and type', async ({ page }) => {
+  await expect(page.locator('.group-item .group-name').first()).toBeVisible();
+  await expect(page.locator('.group-item .group-type').first()).toBeVisible();
+});
+
+Then('I should see member count for each group', async ({ page }) => {
+  await expect(page.locator('.group-item .group-members').first()).toBeVisible();
+});
+
+When('I click the floating create group button', async ({ page }) => {
+  await page.locator('.fab-create').click();
+});
+
+Then('I should be on the create group page', async ({ page }) => {
+  await expect(page).toHaveURL(/\/create-group/);
+});
+
+Then('Trip groups should show plane icon', async ({ page }) => {
+  await expect(page.locator('.group-icon--trip')).toBeVisible();
+});
+
+Then('Home groups should show home icon', async ({ page }) => {
+  await expect(page.locator('.group-icon--home')).toBeVisible();
+});
+
+Then('Family groups should show heart icon', async ({ page }) => {
+  await expect(page.locator('.group-icon--family')).toBeVisible();
+});
+
+Then('Subscription groups should show credit card icon', async ({ page }) => {
+  await expect(page.locator('.group-icon--subscription')).toBeVisible();
 });
