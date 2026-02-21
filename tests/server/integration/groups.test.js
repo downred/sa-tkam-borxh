@@ -2,6 +2,8 @@ const request = require("supertest");
 const mongoose = require("mongoose");
 const User = require("../../../server/models/User");
 const Group = require("../../../server/models/Group");
+const Expense = require("../../../server/models/Expense");
+const Settlement = require("../../../server/models/Settlement");
 
 jest.mock("../../../server/config/database");
 jest.mock("bcryptjs");
@@ -299,6 +301,8 @@ describe("Groups API", () => {
           populate: jest.fn().mockReturnThis(),
         };
         Group.findById = jest.fn().mockResolvedValue(groupWithSave);
+        Expense.find = jest.fn().mockResolvedValue([]);
+        Settlement.find = jest.fn().mockResolvedValue([]);
 
         const response = await request(app)
           .delete(`/api/groups/${mockGroup._id}/members`)
@@ -325,6 +329,107 @@ describe("Groups API", () => {
 
         expect(response.status).toBe(400);
         expect(response.body.error).toBe("Cannot remove the group creator");
+      });
+    });
+
+    describe("when member has unsettled positive balance (is owed money)", () => {
+      it("should return 400 error", async () => {
+        const memberToRemove = "507f1f77bcf86cd799439013";
+        const groupWithSave = {
+          ...mockGroup,
+          createdBy: { toString: () => mockUser._id },
+          members: [mockUser._id, memberToRemove],
+        };
+        Group.findById = jest.fn().mockResolvedValue(groupWithSave);
+        
+        // Member paid €50, split is €25 each -> member is owed €25
+        Expense.find = jest.fn().mockResolvedValue([{
+          paidBy: [{ user: { toString: () => memberToRemove }, amount: 50 }],
+          splits: [
+            { user: { toString: () => memberToRemove }, amount: 25 },
+            { user: { toString: () => mockUser._id }, amount: 25 }
+          ]
+        }]);
+        Settlement.find = jest.fn().mockResolvedValue([]);
+
+        const response = await request(app)
+          .delete(`/api/groups/${mockGroup._id}/members`)
+          .set("Authorization", `Bearer ${validToken}`)
+          .send({ userId: memberToRemove });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain("Cannot remove member");
+        expect(response.body.error).toContain("is owed");
+        expect(response.body.error).toContain("25.00");
+      });
+    });
+
+    describe("when member has unsettled negative balance (owes money)", () => {
+      it("should return 400 error", async () => {
+        const memberToRemove = "507f1f77bcf86cd799439013";
+        const groupWithSave = {
+          ...mockGroup,
+          createdBy: { toString: () => mockUser._id },
+          members: [mockUser._id, memberToRemove],
+        };
+        Group.findById = jest.fn().mockResolvedValue(groupWithSave);
+        
+        // Creator paid €50, split is €25 each -> member owes €25
+        Expense.find = jest.fn().mockResolvedValue([{
+          paidBy: [{ user: { toString: () => mockUser._id }, amount: 50 }],
+          splits: [
+            { user: { toString: () => memberToRemove }, amount: 25 },
+            { user: { toString: () => mockUser._id }, amount: 25 }
+          ]
+        }]);
+        Settlement.find = jest.fn().mockResolvedValue([]);
+
+        const response = await request(app)
+          .delete(`/api/groups/${mockGroup._id}/members`)
+          .set("Authorization", `Bearer ${validToken}`)
+          .send({ userId: memberToRemove });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain("Cannot remove member");
+        expect(response.body.error).toContain("owes");
+        expect(response.body.error).toContain("25.00");
+      });
+    });
+
+    describe("when member balance is settled (zero)", () => {
+      it("should allow removal after settlement", async () => {
+        const memberToRemove = "507f1f77bcf86cd799439013";
+        const groupWithSave = {
+          ...mockGroup,
+          createdBy: { toString: () => mockUser._id },
+          members: [mockUser._id, memberToRemove],
+          save: jest.fn().mockResolvedValue(true),
+          populate: jest.fn().mockReturnThis(),
+        };
+        Group.findById = jest.fn().mockResolvedValue(groupWithSave);
+        
+        // Creator paid €50, split €25 each -> member owes €25
+        Expense.find = jest.fn().mockResolvedValue([{
+          paidBy: [{ user: { toString: () => mockUser._id }, amount: 50 }],
+          splits: [
+            { user: { toString: () => memberToRemove }, amount: 25 },
+            { user: { toString: () => mockUser._id }, amount: 25 }
+          ]
+        }]);
+        // Settlement clears the debt: member paid €25 to creator
+        Settlement.find = jest.fn().mockResolvedValue([{
+          from: { toString: () => memberToRemove },
+          to: { toString: () => mockUser._id },
+          amount: 25
+        }]);
+
+        const response = await request(app)
+          .delete(`/api/groups/${mockGroup._id}/members`)
+          .set("Authorization", `Bearer ${validToken}`)
+          .send({ userId: memberToRemove });
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
       });
     });
   });

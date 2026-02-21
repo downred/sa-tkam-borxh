@@ -83,6 +83,38 @@ export const createGroupService = (apiClient = api) => ({
       data: { userId } 
     })
     return response.data
+  },
+
+  /**
+   * Get balances for all members in a group
+   * @param {string} groupId - Group ID
+   * @returns {Promise} API response with balance array [{user, balance}]
+   */
+  async getBalances(groupId) {
+    const response = await apiClient.get(`/groups/${groupId}/balances`)
+    return response.data
+  },
+
+  /**
+   * Get simplified debts (minimum transactions to settle all balances)
+   * Uses debt simplification and circular debt cancellation
+   * @param {string} groupId - Group ID
+   * @returns {Promise} API response with {transactions, transactionCount, summary}
+   */
+  async getSimplifiedDebts(groupId) {
+    const response = await apiClient.get(`/groups/${groupId}/simplified-debts`)
+    return response.data
+  },
+
+  /**
+   * Check group zero-sum integrity
+   * Verifies all balances sum to zero and expenses are valid
+   * @param {string} groupId - Group ID
+   * @returns {Promise} API response with {valid, issues, totalBalance, message}
+   */
+  async checkIntegrity(groupId) {
+    const response = await apiClient.get(`/groups/${groupId}/integrity`)
+    return response.data
   }
 })
 

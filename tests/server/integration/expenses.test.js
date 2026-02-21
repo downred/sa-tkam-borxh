@@ -272,6 +272,25 @@ describe("Expenses API", () => {
           expect(response.status).toBe(201);
         });
       });
+
+      describe("when splitAmong is empty array", () => {
+        it("should return 400 to prevent division by zero", async () => {
+          const response = await request(app)
+            .post("/api/expenses")
+            .set("Authorization", "Bearer " + validToken)
+            .send({
+              description: "Test",
+              amount: 100,
+              groupId: groupId,
+              splitType: "equal",
+              paidBy: [{ user: mockUser._id, amount: 100 }],
+              splitAmong: [],
+            });
+
+          expect(response.status).toBe(400);
+          expect(response.body.error).toContain("at least one participant");
+        });
+      });
     });
 
     describe("Exact Split", () => {
@@ -400,6 +419,177 @@ describe("Expenses API", () => {
 
           expect(response.status).toBe(400);
           expect(response.body.error).toContain("Percentage split requires percentages");
+        });
+      });
+    });
+
+    describe("Shares Split", () => {
+      describe("when creating with valid shares", () => {
+        it("should create expense with share-based splits", async () => {
+          const response = await request(app)
+            .post("/api/expenses")
+            .set("Authorization", "Bearer " + validToken)
+            .send({
+              description: "Rent",
+              amount: 900,
+              groupId: groupId,
+              splitType: "shares",
+              paidBy: [{ user: mockUser._id, amount: 900 }],
+              splitAmong: [
+                { user: mockUser._id, shares: 2 },
+                { user: mockUser2._id, shares: 1 },
+              ],
+            });
+
+          expect(response.status).toBe(201);
+        });
+      });
+
+      describe("when shares split calculates correctly", () => {
+        it("should split 90 with shares 2:1 as 60:30", async () => {
+          // 2 shares + 1 share = 3 total
+          // Alice: 90 * 2/3 = 60
+          // Bob: 90 * 1/3 = 30
+          const response = await request(app)
+            .post("/api/expenses")
+            .set("Authorization", "Bearer " + validToken)
+            .send({
+              description: "Dinner",
+              amount: 90,
+              groupId: groupId,
+              splitType: "shares",
+              paidBy: [{ user: mockUser._id, amount: 90 }],
+              splitAmong: [
+                { user: mockUser._id, shares: 2 },
+                { user: mockUser2._id, shares: 1 },
+              ],
+            });
+
+          expect(response.status).toBe(201);
+        });
+      });
+
+      describe("when shares split has no shares", () => {
+        it("should return 400 error", async () => {
+          const response = await request(app)
+            .post("/api/expenses")
+            .set("Authorization", "Bearer " + validToken)
+            .send({
+              description: "No shares",
+              amount: 100,
+              groupId: groupId,
+              splitType: "shares",
+              paidBy: [{ user: mockUser._id, amount: 100 }],
+              splitAmong: [mockUser._id, mockUser2._id],
+            });
+
+          expect(response.status).toBe(400);
+          expect(response.body.error).toContain("Shares split requires shares");
+        });
+      });
+
+      describe("when total shares is zero", () => {
+        it("should return 400 error", async () => {
+          const response = await request(app)
+            .post("/api/expenses")
+            .set("Authorization", "Bearer " + validToken)
+            .send({
+              description: "Zero shares",
+              amount: 100,
+              groupId: groupId,
+              splitType: "shares",
+              paidBy: [{ user: mockUser._id, amount: 100 }],
+              splitAmong: [
+                { user: mockUser._id, shares: 0 },
+                { user: mockUser2._id, shares: 0 },
+              ],
+            });
+
+          expect(response.status).toBe(400);
+          expect(response.body.error).toContain("Total shares must be greater than 0");
+        });
+      });
+    });
+
+    describe("Refunds (Negative Expenses)", () => {
+      describe("when creating a refund with equal split", () => {
+        it("should create expense with negative amounts", async () => {
+          // Bob refunds €60 split equally among 3 people (-€20 each)
+          const response = await request(app)
+            .post("/api/expenses")
+            .set("Authorization", "Bearer " + validToken)
+            .send({
+              description: "Refund for cancelled trip",
+              amount: -60,
+              groupId: groupId,
+              splitType: "equal",
+              paidBy: [{ user: mockUser2._id, amount: -60 }],
+              splitAmong: [mockUser._id, mockUser2._id, mockUser3._id],
+            });
+
+          expect(response.status).toBe(201);
+          expect(response.body.amount).toBe(-60);
+          // Each person's split should be -20
+          expect(response.body.splits[0].amount).toBe(-20);
+        });
+      });
+
+      describe("when creating a refund with exact amounts", () => {
+        it("should create expense with specified negative amounts", async () => {
+          const response = await request(app)
+            .post("/api/expenses")
+            .set("Authorization", "Bearer " + validToken)
+            .send({
+              description: "Partial refund",
+              amount: -50,
+              groupId: groupId,
+              splitType: "exact",
+              paidBy: [{ user: mockUser._id, amount: -50 }],
+              splitAmong: [
+                { user: mockUser._id, amount: -30 },
+                { user: mockUser2._id, amount: -20 },
+              ],
+            });
+
+          expect(response.status).toBe(201);
+          expect(response.body.amount).toBe(-50);
+        });
+      });
+
+      describe("when amount is zero", () => {
+        it("should return 400 error", async () => {
+          const response = await request(app)
+            .post("/api/expenses")
+            .set("Authorization", "Bearer " + validToken)
+            .send({
+              description: "Zero expense",
+              amount: 0,
+              groupId: groupId,
+              paidBy: [{ user: mockUser._id, amount: 0 }],
+              splitAmong: [mockUser._id],
+            });
+
+          expect(response.status).toBe(400);
+          expect(response.body.error).toContain("Amount cannot be zero");
+        });
+      });
+
+      describe("when refund amount sign mismatches paidBy", () => {
+        it("should fail zero-sum validation", async () => {
+          // Negative amount but positive paidBy - should fail
+          const response = await request(app)
+            .post("/api/expenses")
+            .set("Authorization", "Bearer " + validToken)
+            .send({
+              description: "Bad refund",
+              amount: -50,
+              groupId: groupId,
+              paidBy: [{ user: mockUser._id, amount: 50 }], // Wrong sign!
+              splitAmong: [mockUser._id, mockUser2._id],
+            });
+
+          expect(response.status).toBe(400);
+          expect(response.body.error).toContain("Paid");
         });
       });
     });
@@ -553,12 +743,19 @@ describe("Expenses API", () => {
           _id: "e1",
           description: "Old",
           amount: 50,
+          group: groupId,
           createdBy: { toString: () => mockUser._id },
+          paidBy: [{ user: mockUser._id, amount: 50 }],
+          splits: [{ user: mockUser._id, amount: 50 }],
           save: jest.fn().mockResolvedValue(true),
           populate: jest.fn().mockResolvedValue(true),
         };
 
         Expense.findById = jest.fn().mockResolvedValue(existingExpense);
+        Group.findById = jest.fn().mockResolvedValue({
+          ...mockGroup,
+          members: [{ toString: () => mockUser._id }],
+        });
 
         const response = await request(app)
           .put("/api/expenses/e1")
@@ -601,6 +798,77 @@ describe("Expenses API", () => {
         expect(response.body.error).toBe("Expense not found");
       });
     });
+
+    describe("when updating paidBy with non-group member", () => {
+      it("should return 400", async () => {
+        const existingExpense = {
+          _id: "e1",
+          group: groupId,
+          amount: 100,
+          createdBy: { toString: () => mockUser._id },
+          paidBy: [{ user: mockUser._id, amount: 100 }],
+          splits: [
+            { user: mockUser._id, amount: 50 },
+            { user: mockUser2._id, amount: 50 },
+          ],
+          save: jest.fn().mockResolvedValue(true),
+          populate: jest.fn().mockReturnThis(),
+        };
+
+        Expense.findById = jest.fn().mockResolvedValue(existingExpense);
+        Group.findById = jest.fn().mockResolvedValue({
+          ...mockGroup,
+          members: [{ toString: () => mockUser._id }, { toString: () => mockUser2._id }],
+        });
+
+        const response = await request(app)
+          .put("/api/expenses/e1")
+          .set("Authorization", "Bearer " + validToken)
+          .send({
+            paidBy: [{ user: "nonmember123", amount: 100 }],
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain("not a group member");
+      });
+    });
+
+    describe("when updating splits with non-group member", () => {
+      it("should return 400", async () => {
+        const existingExpense = {
+          _id: "e1",
+          group: groupId,
+          amount: 100,
+          createdBy: { toString: () => mockUser._id },
+          paidBy: [{ user: mockUser._id, amount: 100 }],
+          splits: [
+            { user: mockUser._id, amount: 50 },
+            { user: mockUser2._id, amount: 50 },
+          ],
+          save: jest.fn().mockResolvedValue(true),
+          populate: jest.fn().mockReturnThis(),
+        };
+
+        Expense.findById = jest.fn().mockResolvedValue(existingExpense);
+        Group.findById = jest.fn().mockResolvedValue({
+          ...mockGroup,
+          members: [{ toString: () => mockUser._id }, { toString: () => mockUser2._id }],
+        });
+
+        const response = await request(app)
+          .put("/api/expenses/e1")
+          .set("Authorization", "Bearer " + validToken)
+          .send({
+            splits: [
+              { user: mockUser._id, amount: 50 },
+              { user: "nonmember456", amount: 50 },
+            ],
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain("not a group member");
+      });
+    });
   });
 
   // ───────────────────────────────────────────────
@@ -608,10 +876,17 @@ describe("Expenses API", () => {
   // ───────────────────────────────────────────────
   describe("Delete Expense", () => {
     describe("when creator deletes expense", () => {
-      it("should delete successfully", async () => {
+      it("should delete successfully and return balance impact", async () => {
         const existingExpense = {
           _id: "e1",
+          description: "Test dinner",
+          amount: 100,
           createdBy: { toString: () => mockUser._id },
+          paidBy: [{ user: { toString: () => mockUser._id }, amount: 100 }],
+          splits: [
+            { user: { toString: () => mockUser._id }, amount: 50 },
+            { user: { toString: () => mockUser2._id }, amount: 50 },
+          ],
           deleteOne: jest.fn().mockResolvedValue(true),
         };
 
@@ -623,7 +898,46 @@ describe("Expenses API", () => {
 
         expect(response.status).toBe(200);
         expect(response.body.message).toBe("Expense deleted successfully");
+        expect(response.body.deletedExpense.description).toBe("Test dinner");
+        expect(response.body.deletedExpense.amount).toBe(100);
+        expect(response.body.balanceImpact).toBeDefined();
         expect(existingExpense.deleteOne).toHaveBeenCalled();
+      });
+
+      it("should show correct balance impact", async () => {
+        // Alice paid €100, split €50 each with Bob
+        // Balance impact: Alice loses €50 (was owed), Bob gains €50 (no longer owes)
+        const aliceId = mockUser._id;
+        const bobId = mockUser2._id;
+        
+        const existingExpense = {
+          _id: "e1",
+          description: "Test",
+          amount: 100,
+          createdBy: { toString: () => aliceId },
+          paidBy: [{ user: aliceId, amount: 100 }],
+          splits: [
+            { user: aliceId, amount: 50 },
+            { user: bobId, amount: 50 },
+          ],
+          deleteOne: jest.fn().mockResolvedValue(true),
+        };
+
+        Expense.findById = jest.fn().mockResolvedValue(existingExpense);
+
+        const response = await request(app)
+          .delete("/api/expenses/e1")
+          .set("Authorization", "Bearer " + validToken);
+
+        expect(response.status).toBe(200);
+        
+        // Alice: paid -100 + split +50 = -50 (loses €50)
+        const aliceImpact = response.body.balanceImpact.find(b => b.user === aliceId);
+        expect(aliceImpact.change).toBe(-50);
+        
+        // Bob: split +50 (no longer owes €50)
+        const bobImpact = response.body.balanceImpact.find(b => b.user === bobId);
+        expect(bobImpact.change).toBe(50);
       });
     });
 
@@ -858,6 +1172,445 @@ describe("Expenses API", () => {
         expect(bob.balance).toBe(6);
         // Charlie: paid 0, owed 33 => -33
         expect(charlie.balance).toBe(-33);
+      });
+    });
+  });
+
+  describe("Debt Simplification", () => {
+    const mockUser4 = {
+      _id: "507f1f77bcf86cd799439044",
+      name: "Diana",
+      email: "diana@example.com",
+    };
+
+    describe("Simple chain simplification", () => {
+      it("should simplify A->B->C to A->C", async () => {
+        // Scenario: A owes B €50, B owes C €50
+        // After simplification: A pays C €50 (1 transaction instead of 2)
+        const mockGroupWith3 = {
+          ...mockGroup,
+          members: [
+            { _id: mockUser._id, name: mockUser.name, email: mockUser.email },
+            { _id: mockUser2._id, name: mockUser2.name, email: mockUser2.email },
+            { _id: mockUser3._id, name: mockUser3.name, email: mockUser3.email },
+          ],
+        };
+
+        Group.findById = jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockGroupWith3),
+        });
+
+        // Expense 1: B paid €100, split equally A/B => A owes B €50
+        // Expense 2: C paid €100, split equally B/C => B owes C €50
+        Expense.find = jest.fn().mockResolvedValue([
+          {
+            paidBy: [{ user: { toString: () => mockUser2._id }, amount: 100 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 50 },
+              { user: { toString: () => mockUser2._id }, amount: 50 },
+            ],
+          },
+          {
+            paidBy: [{ user: { toString: () => mockUser3._id }, amount: 100 }],
+            splits: [
+              { user: { toString: () => mockUser2._id }, amount: 50 },
+              { user: { toString: () => mockUser3._id }, amount: 50 },
+            ],
+          },
+        ]);
+        Settlement.find = jest.fn().mockResolvedValue([]);
+
+        const response = await request(app)
+          .get("/api/groups/" + groupId + "/simplified-debts")
+          .set("Authorization", "Bearer " + validToken);
+
+        expect(response.status).toBe(200);
+        // Net: A=-50, B=0, C=+50 => A pays C €50 (1 transaction)
+        expect(response.body.transactionCount).toBe(1);
+        expect(response.body.transactions[0].from._id).toBe(mockUser._id);
+        expect(response.body.transactions[0].to._id).toBe(mockUser3._id);
+        expect(response.body.transactions[0].amount).toBe(50);
+      });
+    });
+
+    describe("Circular debt cancellation", () => {
+      it("should cancel out circular debts completely", async () => {
+        // Scenario: A owes B €30, B owes C €30, C owes A €30
+        // All circular - net balances are 0, no transactions needed
+        const mockGroupWith3 = {
+          ...mockGroup,
+          members: [
+            { _id: mockUser._id, name: mockUser.name, email: mockUser.email },
+            { _id: mockUser2._id, name: mockUser2.name, email: mockUser2.email },
+            { _id: mockUser3._id, name: mockUser3.name, email: mockUser3.email },
+          ],
+        };
+
+        Group.findById = jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockGroupWith3),
+        });
+
+        // A owes B €30: B paid €60, split A/B equally
+        // B owes C €30: C paid €60, split B/C equally
+        // C owes A €30: A paid €60, split A/C equally
+        Expense.find = jest.fn().mockResolvedValue([
+          {
+            paidBy: [{ user: { toString: () => mockUser2._id }, amount: 60 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 30 },
+              { user: { toString: () => mockUser2._id }, amount: 30 },
+            ],
+          },
+          {
+            paidBy: [{ user: { toString: () => mockUser3._id }, amount: 60 }],
+            splits: [
+              { user: { toString: () => mockUser2._id }, amount: 30 },
+              { user: { toString: () => mockUser3._id }, amount: 30 },
+            ],
+          },
+          {
+            paidBy: [{ user: { toString: () => mockUser._id }, amount: 60 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 30 },
+              { user: { toString: () => mockUser3._id }, amount: 30 },
+            ],
+          },
+        ]);
+        Settlement.find = jest.fn().mockResolvedValue([]);
+
+        const response = await request(app)
+          .get("/api/groups/" + groupId + "/simplified-debts")
+          .set("Authorization", "Bearer " + validToken);
+
+        expect(response.status).toBe(200);
+        // All cancel out - no transactions needed
+        expect(response.body.transactionCount).toBe(0);
+        expect(response.body.transactions).toEqual([]);
+      });
+
+      it("should handle partial circular debt with remainder", async () => {
+        // A owes B €50, B owes C €30, C owes A €20
+        // Net: A = -50+20 = -30, B = +50-30 = +20, C = +30-20 = +10
+        // Simplified: A pays B €20, A pays C €10 (2 transactions)
+        const mockGroupWith3 = {
+          ...mockGroup,
+          members: [
+            { _id: mockUser._id, name: mockUser.name, email: mockUser.email },
+            { _id: mockUser2._id, name: mockUser2.name, email: mockUser2.email },
+            { _id: mockUser3._id, name: mockUser3.name, email: mockUser3.email },
+          ],
+        };
+
+        Group.findById = jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockGroupWith3),
+        });
+
+        Expense.find = jest.fn().mockResolvedValue([
+          {
+            paidBy: [{ user: { toString: () => mockUser2._id }, amount: 100 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 50 },
+              { user: { toString: () => mockUser2._id }, amount: 50 },
+            ],
+          },
+          {
+            paidBy: [{ user: { toString: () => mockUser3._id }, amount: 60 }],
+            splits: [
+              { user: { toString: () => mockUser2._id }, amount: 30 },
+              { user: { toString: () => mockUser3._id }, amount: 30 },
+            ],
+          },
+          {
+            paidBy: [{ user: { toString: () => mockUser._id }, amount: 40 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 20 },
+              { user: { toString: () => mockUser3._id }, amount: 20 },
+            ],
+          },
+        ]);
+        Settlement.find = jest.fn().mockResolvedValue([]);
+
+        const response = await request(app)
+          .get("/api/groups/" + groupId + "/simplified-debts")
+          .set("Authorization", "Bearer " + validToken);
+
+        expect(response.status).toBe(200);
+        expect(response.body.transactionCount).toBe(2);
+        
+        // A (owes 30) pays B (owed 20) and C (owed 10)
+        const totalPaid = response.body.transactions.reduce((sum, t) => sum + t.amount, 0);
+        expect(totalPaid).toBe(30);
+      });
+    });
+
+    describe("Multiple creditors and debtors", () => {
+      it("should minimize transactions with 4 people", async () => {
+        // A=-60, B=-40, C=+70, D=+30
+        // Optimal: A pays C €60, B pays C €10, B pays D €30 = 3 transactions
+        const mockGroupWith4 = {
+          ...mockGroup,
+          members: [
+            { _id: mockUser._id, name: mockUser.name, email: mockUser.email },
+            { _id: mockUser2._id, name: mockUser2.name, email: mockUser2.email },
+            { _id: mockUser3._id, name: mockUser3.name, email: mockUser3.email },
+            { _id: mockUser4._id, name: mockUser4.name, email: mockUser4.email },
+          ],
+        };
+
+        Group.findById = jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockGroupWith4),
+        });
+
+        Expense.find = jest.fn().mockResolvedValue([
+          {
+            paidBy: [{ user: { toString: () => mockUser3._id }, amount: 140 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 35 },
+              { user: { toString: () => mockUser2._id }, amount: 35 },
+              { user: { toString: () => mockUser3._id }, amount: 35 },
+              { user: { toString: () => mockUser4._id }, amount: 35 },
+            ],
+          },
+          {
+            paidBy: [{ user: { toString: () => mockUser4._id }, amount: 60 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 25 },
+              { user: { toString: () => mockUser2._id }, amount: 5 },
+              { user: { toString: () => mockUser3._id }, amount: 30 },
+              { user: { toString: () => mockUser4._id }, amount: 0 },
+            ],
+          },
+        ]);
+        Settlement.find = jest.fn().mockResolvedValue([]);
+
+        const response = await request(app)
+          .get("/api/groups/" + groupId + "/simplified-debts")
+          .set("Authorization", "Bearer " + validToken);
+
+        expect(response.status).toBe(200);
+        // Max n-1 transactions for n people with non-zero balance
+        expect(response.body.transactionCount).toBeLessThanOrEqual(3);
+        
+        // Sum of all transaction amounts should conserve money
+        const totalTransferred = response.body.transactions.reduce((sum, t) => sum + t.amount, 0);
+        expect(totalTransferred).toBe(100); // Total debt = 60 + 40 = 100
+      });
+    });
+
+    describe("Already settled group", () => {
+      it("should return 0 transactions when all settled", async () => {
+        const mockGroupWith2 = {
+          ...mockGroup,
+          members: [
+            { _id: mockUser._id, name: mockUser.name, email: mockUser.email },
+            { _id: mockUser2._id, name: mockUser2.name, email: mockUser2.email },
+          ],
+        };
+
+        Group.findById = jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockGroupWith2),
+        });
+
+        // A paid €100, split equally
+        Expense.find = jest.fn().mockResolvedValue([
+          {
+            paidBy: [{ user: { toString: () => mockUser._id }, amount: 100 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 50 },
+              { user: { toString: () => mockUser2._id }, amount: 50 },
+            ],
+          },
+        ]);
+        // B settled with A
+        Settlement.find = jest.fn().mockResolvedValue([
+          {
+            from: { toString: () => mockUser2._id },
+            to: { toString: () => mockUser._id },
+            amount: 50,
+          },
+        ]);
+
+        const response = await request(app)
+          .get("/api/groups/" + groupId + "/simplified-debts")
+          .set("Authorization", "Bearer " + validToken);
+
+        expect(response.status).toBe(200);
+        expect(response.body.transactionCount).toBe(0);
+        expect(response.body.summary).toContain("0 payments");
+      });
+    });
+  });
+
+  describe("Zero-Sum Integrity", () => {
+    describe("Create expense validation", () => {
+      it("should reject expense where splits don't sum to amount", async () => {
+        Group.findById = jest.fn().mockResolvedValue({
+          ...mockGroup,
+          members: [{ toString: () => mockUser._id }, { toString: () => mockUser2._id }],
+        });
+
+        const response = await request(app)
+          .post("/api/expenses")
+          .set("Authorization", "Bearer " + validToken)
+          .send({
+            description: "Bad expense",
+            amount: 100,
+            groupId: groupId,
+            paidBy: [{ user: mockUser._id, amount: 100 }],
+            splitType: "exact",
+            splitAmong: [
+              { user: mockUser._id, amount: 40 },
+              { user: mockUser2._id, amount: 40 }, // Only 80, not 100!
+            ],
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain("must sum to");
+      });
+
+      it("should reject expense where paidBy doesn't sum to amount", async () => {
+        Group.findById = jest.fn().mockResolvedValue({
+          ...mockGroup,
+          members: [{ toString: () => mockUser._id }, { toString: () => mockUser2._id }],
+        });
+
+        const response = await request(app)
+          .post("/api/expenses")
+          .set("Authorization", "Bearer " + validToken)
+          .send({
+            description: "Bad expense",
+            amount: 100,
+            groupId: groupId,
+            paidBy: [{ user: mockUser._id, amount: 80 }], // Only 80, not 100!
+            splitType: "equal",
+            splitAmong: [mockUser._id, mockUser2._id],
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain("Paid amounts must sum");
+      });
+    });
+
+    describe("Group integrity check endpoint", () => {
+      it("should return valid for healthy group", async () => {
+        const mockGroupWith2 = {
+          ...mockGroup,
+          members: [
+            { _id: mockUser._id, name: mockUser.name, email: mockUser.email },
+            { _id: mockUser2._id, name: mockUser2.name, email: mockUser2.email },
+          ],
+        };
+
+        Group.findById = jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockGroupWith2),
+        });
+
+        // Valid expense: paid = splits = amount
+        Expense.find = jest.fn().mockResolvedValue([
+          {
+            _id: "expense1",
+            description: "Dinner",
+            amount: 100,
+            paidBy: [{ user: { toString: () => mockUser._id }, amount: 100 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 50 },
+              { user: { toString: () => mockUser2._id }, amount: 50 },
+            ],
+          },
+        ]);
+        Settlement.find = jest.fn().mockResolvedValue([]);
+
+        const response = await request(app)
+          .get("/api/groups/" + groupId + "/integrity")
+          .set("Authorization", "Bearer " + validToken);
+
+        expect(response.status).toBe(200);
+        expect(response.body.valid).toBe(true);
+        expect(response.body.totalBalance).toBe(0);
+        expect(response.body.issues).toHaveLength(0);
+        expect(response.body.message).toContain("Zero-sum integrity verified");
+      });
+
+      it("should detect expense with mismatched splits", async () => {
+        const mockGroupWith2 = {
+          ...mockGroup,
+          members: [
+            { _id: mockUser._id, name: mockUser.name, email: mockUser.email },
+            { _id: mockUser2._id, name: mockUser2.name, email: mockUser2.email },
+          ],
+        };
+
+        Group.findById = jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockGroupWith2),
+        });
+
+        // Invalid expense: splits don't sum to amount
+        Expense.find = jest.fn().mockResolvedValue([
+          {
+            _id: "expense1",
+            description: "Bad expense",
+            amount: 100,
+            paidBy: [{ user: { toString: () => mockUser._id }, amount: 100 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 40 },
+              { user: { toString: () => mockUser2._id }, amount: 40 }, // Total 80, not 100
+            ],
+          },
+        ]);
+        Settlement.find = jest.fn().mockResolvedValue([]);
+
+        const response = await request(app)
+          .get("/api/groups/" + groupId + "/integrity")
+          .set("Authorization", "Bearer " + validToken);
+
+        expect(response.status).toBe(200);
+        expect(response.body.valid).toBe(false);
+        expect(response.body.issues.length).toBeGreaterThan(0);
+        expect(response.body.issues[0].type).toBe("expense_split_mismatch");
+      });
+
+      it("should verify balances sum to zero after settlements", async () => {
+        const mockGroupWith2 = {
+          ...mockGroup,
+          members: [
+            { _id: mockUser._id, name: mockUser.name, email: mockUser.email },
+            { _id: mockUser2._id, name: mockUser2.name, email: mockUser2.email },
+          ],
+        };
+
+        Group.findById = jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockGroupWith2),
+        });
+
+        // Alice paid €100, split equally -> Alice +50, Bob -50
+        Expense.find = jest.fn().mockResolvedValue([
+          {
+            _id: "expense1",
+            description: "Dinner",
+            amount: 100,
+            paidBy: [{ user: { toString: () => mockUser._id }, amount: 100 }],
+            splits: [
+              { user: { toString: () => mockUser._id }, amount: 50 },
+              { user: { toString: () => mockUser2._id }, amount: 50 },
+            ],
+          },
+        ]);
+        // Bob paid Alice €50 -> now both at 0
+        Settlement.find = jest.fn().mockResolvedValue([
+          {
+            from: { toString: () => mockUser2._id },
+            to: { toString: () => mockUser._id },
+            amount: 50,
+          },
+        ]);
+
+        const response = await request(app)
+          .get("/api/groups/" + groupId + "/integrity")
+          .set("Authorization", "Bearer " + validToken);
+
+        expect(response.status).toBe(200);
+        expect(response.body.valid).toBe(true);
+        expect(response.body.totalBalance).toBe(0);
       });
     });
   });

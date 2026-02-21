@@ -100,6 +100,51 @@
           </div>
         </div>
 
+        <!-- Suggested Settlements Section (Simplified Debts) -->
+        <div v-if="!expensesLoading && expenses.length > 0 && (totalOwed > 0 || totalOwe > 0)" class="section">
+          <div class="section-header">
+            <ArrowRight class="w-5 h-5 text-secondary-500" />
+            <h3 class="section-title">Suggested Settlements</h3>
+          </div>
+          
+          <div v-if="simplifiedDebtsLoading" class="settlements-loading">
+            <Loader2 class="w-5 h-5 animate-spin text-primary-500" />
+          </div>
+
+          <div v-else-if="simplifiedDebts.transactions?.length > 0" class="settlements-list">
+            <p class="settlements-summary">{{ simplifiedDebts.summary }}</p>
+            <div
+              v-for="(txn, idx) in simplifiedDebts.transactions"
+              :key="idx"
+              class="settlement-item"
+            >
+              <div class="settlement-item__avatars">
+                <div class="settlement-item__avatar settlement-item__avatar--from">
+                  {{ txn.from.name?.charAt(0)?.toUpperCase() || '?' }}
+                </div>
+                <ArrowRight class="w-4 h-4 text-secondary-400" />
+                <div class="settlement-item__avatar settlement-item__avatar--to">
+                  {{ txn.to.name?.charAt(0)?.toUpperCase() || '?' }}
+                </div>
+              </div>
+              <div class="settlement-item__info">
+                <p class="settlement-item__names">
+                  <span :class="{ 'font-semibold': txn.from._id === authStore.user?._id }">
+                    {{ txn.from._id === authStore.user?._id ? 'You' : txn.from.name }}
+                  </span>
+                  <span class="text-secondary-400"> pays </span>
+                  <span :class="{ 'font-semibold': txn.to._id === authStore.user?._id }">
+                    {{ txn.to._id === authStore.user?._id ? 'You' : txn.to.name }}
+                  </span>
+                </p>
+              </div>
+              <p class="settlement-item__amount">€{{ txn.amount.toFixed(2) }}</p>
+            </div>
+          </div>
+
+          <p v-else class="settlements-empty">All settled up!</p>
+        </div>
+
         <!-- Expenses Section -->
         <div class="section">
           <div class="section-header">
@@ -169,10 +214,11 @@
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
+  ArrowRight,
   Users,
   Plus,
   Loader2,
@@ -188,6 +234,7 @@ import {
 import { useGroupsStore } from '../stores/groups'
 import { useExpensesStore } from '../stores/expenses'
 import { useAuthStore } from '../stores/auth'
+import { groupService } from '../services/groupService'
 
 const route = useRoute()
 const router = useRouter()
@@ -200,6 +247,10 @@ const loading = computed(() => groupsStore.loading)
 const error = computed(() => groupsStore.error)
 const expenses = computed(() => expensesStore.expenses)
 const expensesLoading = computed(() => expensesStore.loading)
+
+// Simplified debts state
+const simplifiedDebts = ref({ transactions: [], transactionCount: 0, summary: '' })
+const simplifiedDebtsLoading = ref(false)
 
 const getGroupIcon = (type) => {
   const icons = {
@@ -324,9 +375,23 @@ const addExpense = () => {
   router.push({ path: '/create-expense', query: { groupId: route.params.id } })
 }
 
+const fetchSimplifiedDebts = async () => {
+  simplifiedDebtsLoading.value = true
+  try {
+    const data = await groupService.getSimplifiedDebts(route.params.id)
+    simplifiedDebts.value = data
+  } catch (err) {
+    console.error('Failed to load simplified debts:', err)
+    simplifiedDebts.value = { transactions: [], transactionCount: 0, summary: '' }
+  } finally {
+    simplifiedDebtsLoading.value = false
+  }
+}
+
 const loadGroup = async () => {
   await groupsStore.fetchGroup(route.params.id)
-  expensesStore.fetchGroupExpenses(route.params.id)
+  await expensesStore.fetchGroupExpenses(route.params.id)
+  fetchSimplifiedDebts()
 }
 
 onMounted(() => {
@@ -578,5 +643,54 @@ onMounted(() => {
       @apply text-red-500;
     }
   }
+}
+
+// Settlements (Simplified Debts)
+.settlements-loading {
+  @apply mt-3 flex justify-center py-4;
+}
+
+.settlements-summary {
+  @apply text-xs text-secondary-500 mb-2 text-center;
+}
+
+.settlements-list {
+  @apply mt-3 space-y-2;
+}
+
+.settlement-item {
+  @apply flex items-center gap-3 p-3 bg-white rounded-lg;
+
+  &__avatars {
+    @apply flex items-center gap-1 flex-shrink-0;
+  }
+
+  &__avatar {
+    @apply w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center;
+
+    &--from {
+      @apply bg-red-100 text-red-600;
+    }
+
+    &--to {
+      @apply bg-green-100 text-green-600;
+    }
+  }
+
+  &__info {
+    @apply flex-1 min-w-0;
+  }
+
+  &__names {
+    @apply text-sm text-secondary-700;
+  }
+
+  &__amount {
+    @apply text-sm font-bold text-primary-600 flex-shrink-0;
+  }
+}
+
+.settlements-empty {
+  @apply mt-3 text-sm text-green-500 text-center py-4 font-medium;
 }
 </style>

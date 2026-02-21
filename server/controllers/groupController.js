@@ -1,4 +1,6 @@
 const Group = require('../models/Group');
+const Expense = require('../models/Expense');
+const Settlement = require('../models/Settlement');
 
 exports.getAllGroups = async (req, res) => {
   try {
@@ -138,6 +140,37 @@ exports.addMember = async (req, res) => {
   }
 };
 
+// Helper: Calculate a single user's balance in a group
+const getUserBalanceInGroup = async (groupId, userId) => {
+  let balance = 0;
+  
+  const expenses = await Expense.find({ group: groupId });
+  for (const expense of expenses) {
+    for (const payer of expense.paidBy) {
+      if (payer.user.toString() === userId) {
+        balance += payer.amount;
+      }
+    }
+    for (const split of expense.splits) {
+      if (split.user.toString() === userId) {
+        balance -= split.amount;
+      }
+    }
+  }
+  
+  const settlements = await Settlement.find({ group: groupId });
+  for (const settlement of settlements) {
+    if (settlement.from.toString() === userId) {
+      balance += settlement.amount;
+    }
+    if (settlement.to.toString() === userId) {
+      balance -= settlement.amount;
+    }
+  }
+  
+  return Math.round(balance * 100) / 100;
+};
+
 exports.removeMember = async (req, res) => {
   try {
     const { userId } = req.body;
@@ -151,6 +184,16 @@ exports.removeMember = async (req, res) => {
     // Cannot remove the creator
     if (userId === group.createdBy.toString()) {
       return res.status(400).json({ error: 'Cannot remove the group creator' });
+    }
+    
+    // Check if user has unsettled balance
+    const userBalance = await getUserBalanceInGroup(req.params.id, userId);
+    if (userBalance !== 0) {
+      const status = userBalance > 0 ? 'is owed' : 'owes';
+      const amount = Math.abs(userBalance);
+      return res.status(400).json({ 
+        error: `Cannot remove member: user ${status} €${amount.toFixed(2)} in this group` 
+      });
     }
     
     group.members = group.members.filter(m => m.toString() !== userId);
