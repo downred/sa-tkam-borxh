@@ -11,6 +11,7 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const groupRoutes = require('./routes/groupRoutes');
+const settlementRoutes = require('./routes/settlementRoutes');
 
 
 app.use(cors({
@@ -34,11 +35,16 @@ app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to saTkamBorxh API' });
 });
 
-
-app.use('/api', expenseRoutes);
-app.use('/api', userRoutes);
+// Auth routes must come first (no auth middleware)
 app.use('/api/auth', authRoutes);
+// User routes (no global auth, individual routes protected)
+app.use('/api', userRoutes);
+// Group routes
 app.use('/api/groups', groupRoutes);
+// Expense routes (all protected by auth)
+app.use('/api', expenseRoutes);
+// Settlement routes
+app.use('/api', settlementRoutes);
 
 
 app.use(

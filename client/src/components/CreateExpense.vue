@@ -4,8 +4,8 @@
 
     <!-- Group Indicator -->
     <div class="group-indicator">
-      <div class="group-indicator__icon">
-        <Home />
+      <div class="group-indicator__icon" :class="`group-indicator__icon--${group?.type?.toLowerCase() || 'other'}`">
+        <component :is="groupIcon" />
       </div>
       <div class="group-indicator__info">
         <p class="group-indicator__label">Adding to</p>
@@ -78,7 +78,7 @@
           <button 
             type="button" 
             class="split-amounts__even"
-            @click="splitEvenly"
+            @click="splitPayersEvenly"
           >
             Split evenly
           </button>
@@ -108,47 +108,115 @@
             </div>
           </div>
         </div>
-        <p v-if="splitTotal !== parseFloat(amount || 0)" class="split-amounts__warning">
-          Total: €{{ splitTotal.toFixed(2) }} / €{{ parseFloat(amount || 0).toFixed(2) }}
+        <p v-if="payerTotal !== parseFloat(amount || 0)" class="split-amounts__warning">
+          Total: €{{ payerTotal.toFixed(2) }} / €{{ parseFloat(amount || 0).toFixed(2) }}
         </p>
       </div>
     </div>
+
+    <!-- Split Among -->
+    <div class="split-among">
+      <div class="split-among__header">
+        <label class="split-among__label">Split among</label>
+        <span class="split-among__count">{{ selectedSplitMembers.length }} selected</span>
+      </div>
+      <div class="split-among__options">
+        <button
+          v-for="member in groupMembers"
+          :key="member.id"
+          type="button"
+          class="payer-option"
+          :class="{ 'payer-option--active': isSplitMemberSelected(member.id) }"
+          @click="toggleSplitMember(member.id)"
+        >
+          <div class="payer-option__avatar">
+            {{ member.name.charAt(0) }}
+          </div>
+          <span class="payer-option__name">{{ member.id === 'you' ? 'You' : member.name }}</span>
+        </button>
+      </div>
+      <p v-if="selectedSplitMembers.length > 0 && amount" class="split-among__preview">
+        €{{ splitPreviewAmount }} per person (equal split)
+      </p>
+    </div>
+
+    <!-- Error -->
+    <p v-if="submitError" class="submit-error">{{ submitError }}</p>
 
     <!-- Create Button -->
     <button 
       type="button" 
       class="btn-create" 
-      :disabled="!canCreate"
+      :disabled="!canCreate || submitting"
       @click="handleCreate"
     >
-      Add Expense
+      {{ submitting ? 'Adding...' : 'Add Expense' }}
     </button>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, reactive } from 'vue'
-import { Home, FileText } from 'lucide-vue-next'
+import { Home, FileText, Plane, Heart, CreditCard, MoreHorizontal } from 'lucide-vue-next'
 import FormInput from './FormInput.vue'
+import { useAuthStore } from '../stores/auth'
+import { useExpensesStore } from '../stores/expenses'
+
+const props = defineProps({
+  group: {
+    type: Object,
+    default: null
+  }
+})
 
 const emit = defineEmits(['created'])
+
+const authStore = useAuthStore()
+const expensesStore = useExpensesStore()
 
 const description = ref('')
 const amount = ref('')
 const multiplePayersMode = ref(false)
 const selectedPayers = ref(['you'])
 const payerAmounts = reactive({})
+const selectedSplitMembers = ref([])
+const submitting = ref(false)
+const submitError = ref(null)
 
-// Hardcoded group
-const groupName = 'Roommates'
+const groupName = computed(() => props.group?.name || 'Unknown Group')
 
-// Hardcoded group members
-const groupMembers = [
-  { id: 'you', name: 'You' },
-  { id: '1', name: 'John' },
-  { id: '2', name: 'Jane' },
-  { id: '3', name: 'Mike' }
-]
+const groupIcon = computed(() => {
+  const icons = { Trip: Plane, Home, Family: Heart, Subscription: CreditCard, Other: MoreHorizontal }
+  return icons[props.group?.type] || MoreHorizontal
+})
+
+const groupMembers = computed(() => {
+  if (!props.group?.members) return [{ id: 'you', name: 'You' }]
+  return props.group.members.map(member => {
+    const isCurrentUser = member._id === authStore.user?._id
+    return {
+      id: isCurrentUser ? 'you' : member._id,
+      name: isCurrentUser ? 'You' : member.name
+    }
+  })
+})
+
+// Initialize split members to all group members
+const initSplitMembers = () => {
+  selectedSplitMembers.value = groupMembers.value.map(m => m.id)
+}
+
+// Watch for group loading
+import { watch } from 'vue'
+watch(() => props.group, () => {
+  if (props.group) initSplitMembers()
+}, { immediate: true })
+
+// Resolve 'you' to actual user ID
+const resolveUserId = (id) => {
+  if (id === 'you') return authStore.user?._id
+  return id
+}
 
 const isPayerSelected = (id) => selectedPayers.value.includes(id)
 
@@ -167,18 +235,34 @@ const togglePayer = (id) => {
   }
 }
 
+const isSplitMemberSelected = (id) => selectedSplitMembers.value.includes(id)
+
+const toggleSplitMember = (id) => {
+  const index = selectedSplitMembers.value.indexOf(id)
+  if (index === -1) {
+    selectedSplitMembers.value.push(id)
+  } else if (selectedSplitMembers.value.length > 1) {
+    selectedSplitMembers.value.splice(index, 1)
+  }
+}
+
 const getMemberName = (id) => {
-  const member = groupMembers.find(m => m.id === id)
+  const member = groupMembers.value.find(m => m.id === id)
   return member ? member.name : ''
 }
 
-const splitTotal = computed(() => {
+const payerTotal = computed(() => {
   return selectedPayers.value.reduce((sum, id) => {
     return sum + (parseFloat(payerAmounts[id]) || 0)
   }, 0)
 })
 
-const splitEvenly = () => {
+const splitPreviewAmount = computed(() => {
+  if (!amount.value || selectedSplitMembers.value.length === 0) return '0.00'
+  return (parseFloat(amount.value) / selectedSplitMembers.value.length).toFixed(2)
+})
+
+const splitPayersEvenly = () => {
   if (!amount.value || selectedPayers.value.length === 0) return
   const splitAmount = (parseFloat(amount.value) / selectedPayers.value.length).toFixed(2)
   selectedPayers.value.forEach(id => {
@@ -189,24 +273,43 @@ const splitEvenly = () => {
 const canCreate = computed(() => {
   const hasBasics = description.value.trim() && amount.value && parseFloat(amount.value) > 0
   if (!hasBasics) return false
+  if (selectedSplitMembers.value.length === 0) return false
   
   if (multiplePayersMode.value) {
-    return selectedPayers.value.length > 0 && splitTotal.value === parseFloat(amount.value)
+    return selectedPayers.value.length > 0 && Math.abs(payerTotal.value - parseFloat(amount.value)) < 0.01
   }
   return selectedPayers.value.length === 1
 })
 
-const handleCreate = () => {
-  const payers = multiplePayersMode.value 
-    ? selectedPayers.value.map(id => ({ id, amount: parseFloat(payerAmounts[id]) }))
-    : [{ id: selectedPayers.value[0], amount: parseFloat(amount.value) }]
+const handleCreate = async () => {
+  if (!canCreate.value || submitting.value) return
 
-  emit('created', {
-    description: description.value,
-    amount: parseFloat(amount.value),
-    group: groupName,
-    payers
-  })
+  submitting.value = true
+  submitError.value = null
+
+  try {
+    const paidBy = multiplePayersMode.value
+      ? selectedPayers.value.map(id => ({ user: resolveUserId(id), amount: parseFloat(payerAmounts[id]) }))
+      : [{ user: resolveUserId(selectedPayers.value[0]), amount: parseFloat(amount.value) }]
+
+    const splitAmong = selectedSplitMembers.value.map(id => resolveUserId(id))
+
+    const expenseData = {
+      description: description.value,
+      amount: parseFloat(amount.value),
+      groupId: props.group?._id,
+      splitType: 'equal',
+      paidBy,
+      splitAmong
+    }
+
+    const created = await expensesStore.createExpense(expenseData)
+    emit('created', created)
+  } catch (err) {
+    submitError.value = err.response?.data?.error || 'Failed to create expense'
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -224,10 +327,30 @@ const handleCreate = () => {
   @apply flex items-center gap-3 p-4 bg-primary-50 rounded-xl;
 
   &__icon {
-    @apply w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center;
+    @apply w-10 h-10 rounded-xl flex items-center justify-center;
+
+    &--trip {
+      @apply bg-blue-100 text-blue-600;
+    }
+
+    &--home {
+      @apply bg-green-100 text-green-600;
+    }
+
+    &--family {
+      @apply bg-pink-100 text-pink-600;
+    }
+
+    &--subscription {
+      @apply bg-purple-100 text-purple-600;
+    }
+
+    &--other {
+      @apply bg-secondary-100 text-secondary-600;
+    }
 
     svg {
-      @apply w-5 h-5 text-primary-600;
+      @apply w-5 h-5;
     }
   }
 
@@ -379,5 +502,33 @@ const handleCreate = () => {
   @apply w-full py-3.5 px-4 bg-primary-600 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/30 transition-all;
   @apply hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
   @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-600;
+}
+
+// Split Among
+.split-among {
+  &__header {
+    @apply flex items-center justify-between mb-3;
+  }
+
+  &__label {
+    @apply text-sm font-medium text-secondary-700;
+  }
+
+  &__count {
+    @apply text-sm text-secondary-500;
+  }
+
+  &__options {
+    @apply flex gap-3 overflow-x-auto pb-1;
+  }
+
+  &__preview {
+    @apply mt-3 text-sm text-primary-600 font-medium;
+  }
+}
+
+// Error
+.submit-error {
+  @apply text-sm text-red-600 font-medium;
 }
 </style>

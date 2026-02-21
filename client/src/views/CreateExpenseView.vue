@@ -5,20 +5,44 @@
     </div>
 
     <div class="create-expense-card">
-      <CreateExpense @created="handleCreated" />
+      <!-- Loading -->
+      <div v-if="loading" class="loading-state">
+        <Loader2 class="w-8 h-8 animate-spin text-primary-500" />
+      </div>
+      <CreateExpense v-else :group="group" @created="handleCreated" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Loader2 } from 'lucide-vue-next'
+import { useGroupsStore } from '../stores/groups'
 import CreateExpense from '../components/CreateExpense.vue'
 
+const route = useRoute()
 const router = useRouter()
+const groupsStore = useGroupsStore()
+
+const group = computed(() => groupsStore.currentGroup)
+const loading = computed(() => groupsStore.loading)
+
+onMounted(async () => {
+  const groupId = route.query.groupId
+  if (groupId) {
+    await groupsStore.fetchGroup(groupId)
+  }
+})
 
 const handleCreated = (data) => {
   console.log('Expense created:', data)
-  router.push('/expenses')
+  const groupId = route.query.groupId
+  if (groupId) {
+    router.push(`/groups/${groupId}`)
+  } else {
+    router.push('/expenses')
+  }
 }
 </script>
 
@@ -49,5 +73,9 @@ const handleCreated = (data) => {
   @media (min-width: 768px) {
     @apply rounded-3xl mx-auto my-8 max-w-md flex-none shadow-2xl;
   }
+}
+
+.loading-state {
+  @apply flex items-center justify-center py-20;
 }
 </style>

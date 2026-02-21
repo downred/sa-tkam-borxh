@@ -248,7 +248,7 @@ When('I click the create group button', async ({ page }) => {
         })
       });
     } else {
-      await route.continue();
+      await route.fallback();
     }
   });
 
@@ -414,27 +414,64 @@ Then('I should be on the groups page', async ({ page }) => {
 
 // Create Expense specific steps
 Given('I am on the create expense page', async ({ page }) => {
-  // Mock the auth verification API to prevent token invalidation
+  const mockGroupId = 'mock-group-id';
+  const mockUserId = 'mock-user-id';
+  
+  const mockGroupData = {
+    _id: mockGroupId,
+    name: 'Roommates',
+    type: 'Home',
+    members: [
+      { _id: mockUserId, name: 'You', email: 'john@example.com' },
+      { _id: 'user-john', name: 'John', email: 'johnmember@example.com' },
+      { _id: 'user-jane', name: 'Jane', email: 'jane@example.com' },
+      { _id: 'user-mike', name: 'Mike', email: 'mike@example.com' }
+    ],
+    createdBy: mockUserId
+  };
+  
+  // Mock the auth verification API
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         success: true,
-        data: { _id: 'mock-user-id', name: 'John Doe', email: 'john@example.com' }
+        data: { _id: mockUserId, name: 'You', email: 'john@example.com' }
       })
     });
   });
+  
+  // Mock any group fetch - match the exact endpoint pattern  
+  // API returns { success: true, data: group }
+  await page.route(/\/api\/groups\/[^/]+$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: mockGroupData
+      })
+    });
+  });
+  
   // Use addInitScript to set auth before page loads
   await page.addInitScript(() => {
     localStorage.setItem('token', 'mock-jwt-token');
     localStorage.setItem('user', JSON.stringify({
       _id: 'mock-user-id',
-      name: 'John Doe', 
+      name: 'You', 
       email: 'john@example.com'
     }));
   });
-  await page.goto('/create-expense');
+  
+  // Navigate with groupId to load the mocked group
+  await page.goto(`/create-expense?groupId=${mockGroupId}`);
+  
+  // Wait for the component to fully render (loading spinner gone, form visible)
+  await page.waitForSelector('.create-expense', { timeout: 10000 });
+  // Wait for group name to appear confirming mock worked
+  await page.waitForSelector('.group-indicator__name', { timeout: 5000 });
 });
 
 Then('I should see the group indicator {string}', async ({ page }, groupName) => {
@@ -474,11 +511,13 @@ When('I enter {string} in the description field', async ({ page }, value) => {
 });
 
 When('I click on payer {string}', async ({ page }, payerName) => {
-  await page.locator(`.payer-option:has-text("${payerName}"), .payer-item:has-text("${payerName}")`).click();
+  // Click payer in the "Paid by" section specifically (not the "Split among" section)
+  await page.locator(`.paid-by .payer-option:has-text("${payerName}"), .paid-by__options .payer-option:has-text("${payerName}")`).first().click();
 });
 
 Then('the payer {string} should be active', async ({ page }, payerName) => {
-  await expect(page.locator(`.payer-option:has-text("${payerName}"), .payer-item:has-text("${payerName}")`)).toHaveClass(/active|selected/);
+  // Check payer in the "Paid by" section specifically
+  await expect(page.locator(`.paid-by .payer-option:has-text("${payerName}"), .paid-by__options .payer-option:has-text("${payerName}")`).first()).toHaveClass(/active/);
 });
 
 When('I click the Multiple payers toggle', async ({ page }) => {
@@ -840,6 +879,17 @@ Then('the friend should be removed from the list', async ({ page }) => {
 
 // Groups Page steps
 Given('I am on the groups page', async ({ page }) => {
+  // Mock auth/me to keep token valid
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: { _id: '123', name: 'Test User', email: 'test@example.com' }
+      })
+    });
+  });
   await page.route('**/api/groups', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({

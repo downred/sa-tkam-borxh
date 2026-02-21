@@ -2,6 +2,7 @@ const request = require("supertest");
 const mongoose = require("mongoose");
 const User = require("../../../server/models/User");
 const Expense = require("../../../server/models/Expense");
+const Group = require("../../../server/models/Group");
 const bcrypt = require("bcryptjs");
 
 jest.mock("../../../server/config/database");
@@ -13,6 +14,21 @@ jest.mock("@scalar/express-api-reference", () => ({
 }));
 
 let app;
+let jwt;
+let validToken;
+
+const mockUser = {
+  _id: "507f1f77bcf86cd799439011",
+  name: "Test User",
+  email: "test@example.com",
+};
+
+const mockGroup = {
+  _id: "607f1f77bcf86cd799439099",
+  name: "Test Group",
+  members: [mockUser._id],
+  createdBy: mockUser._id,
+};
 
 describe("API", () => {
   beforeAll(async () => {
@@ -27,6 +43,15 @@ describe("API", () => {
     bcrypt.compare = jest.fn().mockResolvedValue(false);
 
     app = require("../../../server/index");
+    jwt = require("../../../server/node_modules/jsonwebtoken");
+    validToken = jwt.sign({ id: mockUser._id }, process.env.JWT_SECRET);
+  });
+
+  beforeEach(() => {
+    // Reset mocks but keep implementations
+    jest.clearAllMocks();
+    // Default auth mock for protected routes
+    User.findById = jest.fn().mockResolvedValue(mockUser);
   });
 
   afterAll(async () => {
@@ -133,18 +158,27 @@ describe("API", () => {
               amount: 100,
               category: "Food",
               date: new Date(),
-              paidBy: { name: "John Doe", email: "john@example.com" },
+              paidBy: [{ user: mockUser, amount: 100 }],
+              splits: [{ user: mockUser, amount: 100 }],
+              createdBy: mockUser,
             },
           ];
 
+          Group.findById = jest.fn().mockResolvedValue(mockGroup);
           Expense.find = jest.fn().mockReturnValue({
             populate: jest.fn().mockReturnValue({
-              sort: jest.fn().mockResolvedValue(mockExpenses),
+              populate: jest.fn().mockReturnValue({
+                populate: jest.fn().mockReturnValue({
+                  sort: jest.fn().mockResolvedValue(mockExpenses),
+                }),
+              }),
             }),
           });
 
-          // When requesting all expenses
-          const response = await request(app).get("/api/expenses");
+          // When requesting all expenses for a group (with auth)
+          const response = await request(app)
+            .get(`/api/groups/${mockGroup._id}/expenses`)
+            .set("Authorization", `Bearer ${validToken}`);
 
           // Then it should return the expenses array
           expect(response.status).toBe(200);
@@ -156,9 +190,10 @@ describe("API", () => {
     describe("Creating Expense", () => {
       describe("when required fields are missing", () => {
         it("should reject the request with 400 status", async () => {
-          // Given an expense request with only description
+          // Given an expense request with only description (with auth)
           const response = await request(app)
             .post("/api/expenses")
+            .set("Authorization", `Bearer ${validToken}`)
             .send({ description: "Test" });
 
           // Then it should return a validation error
@@ -173,13 +208,17 @@ describe("API", () => {
         it("should return 404 status", async () => {
           // Given the expense is not found
           Expense.findById = jest.fn().mockReturnValue({
-            populate: jest.fn().mockResolvedValue(null),
+            populate: jest.fn().mockReturnValue({
+              populate: jest.fn().mockReturnValue({
+                populate: jest.fn().mockResolvedValue(null),
+              }),
+            }),
           });
 
-          // When requesting the non-existent expense
-          const response = await request(app).get(
-            "/api/expenses/507f1f77bcf86cd799439011"
-          );
+          // When requesting the non-existent expense (with auth)
+          const response = await request(app)
+            .get("/api/expenses/507f1f77bcf86cd799439011")
+            .set("Authorization", `Bearer ${validToken}`);
 
           // Then it should return not found
           expect(response.status).toBe(404);
@@ -192,12 +231,12 @@ describe("API", () => {
       describe("when expense does not exist", () => {
         it("should return 404 status", async () => {
           // Given the expense is not found
-          Expense.findByIdAndDelete = jest.fn().mockResolvedValue(null);
+          Expense.findById = jest.fn().mockResolvedValue(null);
 
-          // When attempting to delete
-          const response = await request(app).delete(
-            "/api/expenses/507f1f77bcf86cd799439011"
-          );
+          // When attempting to delete (with auth)
+          const response = await request(app)
+            .delete("/api/expenses/507f1f77bcf86cd799439011")
+            .set("Authorization", `Bearer ${validToken}`);
 
           // Then it should return not found
           expect(response.status).toBe(404);
@@ -318,9 +357,6 @@ describe("API", () => {
     describe("when token is valid", () => {
       it("should return user data", async () => {
         // Given a valid authenticated user
-        const jwt = require("../../../server/node_modules/jsonwebtoken");
-        const token = jwt.sign({ id: "123" }, process.env.JWT_SECRET);
-
         User.findById = jest.fn().mockResolvedValue({
           _id: "123",
           name: "John Doe",
@@ -330,7 +366,7 @@ describe("API", () => {
         // When requesting current user
         const response = await request(app)
           .get("/api/auth/me")
-          .set("Authorization", `Bearer ${token}`);
+          .set("Authorization", `Bearer ${validToken}`);
 
         // Then it should return user data
         expect(response.status).toBe(200);

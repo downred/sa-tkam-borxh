@@ -9,6 +9,11 @@ const ExpenseSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  group: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Group',
+    required: true
+  },
   date: {
     type: Date,
     default: Date.now
@@ -17,7 +22,34 @@ const ExpenseSchema = new mongoose.Schema({
     type: String,
     default: 'General'
   },
-  paidBy: {
+  splitType: {
+    type: String,
+    enum: ['equal', 'exact', 'percentage'],
+    default: 'equal'
+  },
+  paidBy: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    amount: {
+      type: Number,
+      required: true
+    }
+  }],
+  splits: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    amount: {
+      type: Number,
+      required: true
+    }
+  }],
+  createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true

@@ -93,8 +93,7 @@ const getGroupIcon = (type) => {
 }
 
 const viewGroup = (groupId) => {
-  // TODO: Navigate to group detail page
-  console.log('View group:', groupId)
+  router.push(`/groups/${groupId}`)
 }
 
 onMounted(() => {
