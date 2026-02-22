@@ -4,6 +4,17 @@
     <div class="groups-header">
       <h1 class="header-title">Your Groups</h1>
       <p class="header-subtitle">{{ groups.length }} group{{ groups.length !== 1 ? 's' : '' }}</p>
+      
+      <!-- Total Balance Display -->
+      <div v-if="groups.length > 0" class="balance-card">
+        <p class="balance-label">Overall Balance</p>
+        <p class="balance-amount" :class="balanceClass">
+          {{ balanceDisplay }}
+        </p>
+        <p v-if="totalBalance > 0" class="balance-info">You are owed</p>
+        <p v-else-if="totalBalance < 0" class="balance-info">You owe</p>
+        <p v-else class="balance-info">All settled up!</p>
+      </div>
     </div>
 
     <!-- Groups Card -->
@@ -43,6 +54,10 @@
               <span class="group-members">{{ group.members?.length || 1 }} member{{ group.members?.length !== 1 ? 's' : '' }}</span>
             </p>
           </div>
+          <div class="group-balance" :class="getGroupBalanceClass(group.userBalance)">
+            <span class="group-balance-amount">{{ formatGroupBalance(group.userBalance) }}</span>
+            <span class="group-balance-status">{{ getGroupBalanceStatus(group.userBalance) }}</span>
+          </div>
           <ChevronRight class="group-arrow" />
         </div>
       </div>
@@ -80,6 +95,18 @@ const groupsStore = useGroupsStore()
 
 const groups = computed(() => groupsStore.groups)
 const loading = computed(() => groupsStore.loading)
+const totalBalance = computed(() => groupsStore.totalBalance)
+
+const balanceDisplay = computed(() => {
+  const amount = Math.abs(totalBalance.value)
+  return `€${amount.toFixed(2)}`
+})
+
+const balanceClass = computed(() => {
+  if (totalBalance.value > 0) return 'balance-positive'
+  if (totalBalance.value < 0) return 'balance-negative'
+  return 'balance-neutral'
+})
 
 const getGroupIcon = (type) => {
   const icons = {
@@ -90,6 +117,23 @@ const getGroupIcon = (type) => {
     Other: MoreHorizontal
   }
   return icons[type] || MoreHorizontal
+}
+
+const formatGroupBalance = (balance) => {
+  const amount = Math.abs(balance || 0)
+  return `€${amount.toFixed(2)}`
+}
+
+const getGroupBalanceClass = (balance) => {
+  if (balance > 0) return 'group-balance--positive'
+  if (balance < 0) return 'group-balance--negative'
+  return 'group-balance--settled'
+}
+
+const getGroupBalanceStatus = (balance) => {
+  if (balance > 0) return 'you are owed'
+  if (balance < 0) return 'you owe'
+  return 'settled'
 }
 
 const viewGroup = (groupId) => {
@@ -124,6 +168,36 @@ onMounted(() => {
 }
 
 .header-subtitle {
+  @apply text-primary-200 text-sm;
+}
+
+// Balance Card
+.balance-card {
+  @apply mt-6 mx-auto max-w-md bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center;
+  @apply border border-white/20;
+}
+
+.balance-label {
+  @apply text-primary-100 text-sm font-medium mb-2;
+}
+
+.balance-amount {
+  @apply text-4xl font-bold mb-1;
+  
+  &.balance-positive {
+    @apply text-green-300;
+  }
+  
+  &.balance-negative {
+    @apply text-red-300;
+  }
+  
+  &.balance-neutral {
+    @apply text-white;
+  }
+}
+
+.balance-info {
   @apply text-primary-200 text-sm;
 }
 
@@ -203,6 +277,45 @@ onMounted(() => {
 
 .group-separator {
   @apply text-secondary-300;
+}
+
+.group-balance {
+  @apply text-right mr-2;
+}
+
+.group-balance-amount {
+  @apply block font-semibold text-sm;
+}
+
+.group-balance-status {
+  @apply block text-xs;
+}
+
+.group-balance--positive {
+  .group-balance-amount {
+    @apply text-green-600;
+  }
+  .group-balance-status {
+    @apply text-green-500;
+  }
+}
+
+.group-balance--negative {
+  .group-balance-amount {
+    @apply text-red-600;
+  }
+  .group-balance-status {
+    @apply text-red-500;
+  }
+}
+
+.group-balance--settled {
+  .group-balance-amount {
+    @apply text-secondary-400;
+  }
+  .group-balance-status {
+    @apply text-secondary-400;
+  }
 }
 
 .group-arrow {

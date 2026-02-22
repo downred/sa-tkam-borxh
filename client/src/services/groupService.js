@@ -15,6 +15,15 @@ export const createGroupService = (apiClient = api) => ({
   },
 
   /**
+   * Get total balance across all groups for the current user
+   * @returns {Promise} API response with total balance data
+   */
+  async getTotalBalance() {
+    const response = await apiClient.get('/groups/balance/total')
+    return response.data
+  },
+
+  /**
    * Get a single group by ID
    * @param {string} id - Group ID
    * @returns {Promise} API response with group data

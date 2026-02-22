@@ -7,6 +7,7 @@ const auth = require('../middleware/auth');
 router.use(auth);
 
 router.get('/', groupController.getAllGroups);
+router.get('/balance/total', groupController.getTotalBalance);
 router.get('/:id', groupController.getGroupById);
 router.post('/', groupController.createGroup);
 router.put('/:id', groupController.updateGroup);

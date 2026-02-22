@@ -11,6 +11,11 @@ export const createSettlementService = (apiClient = api) => ({
     return response.data
   },
 
+  async update(id, data) {
+    const response = await apiClient.put(`/settlements/${id}`, data)
+    return response.data
+  },
+
   async delete(id) {
     const response = await apiClient.delete(`/settlements/${id}`)
     return response.data

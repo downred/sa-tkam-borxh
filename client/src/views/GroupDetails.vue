@@ -143,6 +143,50 @@
           </div>
 
           <p v-else class="settlements-empty">All settled up!</p>
+          
+          <!-- Settle Up Button -->
+          <button v-if="totalOwed > 0 || totalOwe > 0" class="btn-settle-up" @click="goToSettleUp">
+            <Banknote class="w-5 h-5" />
+            Settle Up
+          </button>
+        </div>
+
+        <!-- Settlement History Section -->
+        <div v-if="settlements.length > 0" class="section">
+          <div class="section-header">
+            <Banknote class="w-5 h-5 text-secondary-500" />
+            <h3 class="section-title">Settlement History</h3>
+            <span class="section-count">{{ settlements.length }}</span>
+          </div>
+
+          <div class="history-list">
+            <div
+              v-for="settlement in settlements"
+              :key="settlement._id"
+              class="history-item"
+            >
+              <div class="history-item__icon">
+                <Check class="w-4 h-4" />
+              </div>
+              <div class="history-item__info">
+                <p class="history-item__desc">
+                  <span class="font-medium">{{ formatSettlementFrom(settlement) }}</span>
+                  <span class="text-secondary-500"> paid </span>
+                  <span class="font-medium">{{ formatSettlementTo(settlement) }}</span>
+                </p>
+                <p class="history-item__meta">{{ formatDate(settlement.createdAt) }}</p>
+              </div>
+              <p class="history-item__amount">€{{ settlement.amount.toFixed(2) }}</p>
+              <div v-if="canEditSettlement(settlement)" class="item-actions">
+                <button class="action-btn action-btn--edit" @click="editSettlement(settlement)" title="Edit">
+                  <Pencil class="w-4 h-4" />
+                </button>
+                <button class="action-btn action-btn--delete" @click="confirmDeleteSettlement(settlement)" title="Delete">
+                  <Trash2 class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Expenses Section -->
@@ -196,6 +240,14 @@
                   </template>
                 </p>
               </div>
+              <div v-if="canEditExpense(expense)" class="item-actions">
+                <button class="action-btn action-btn--edit" @click="editExpense(expense)" title="Edit">
+                  <Pencil class="w-4 h-4" />
+                </button>
+                <button class="action-btn action-btn--delete" @click="confirmDeleteExpense(expense)" title="Delete">
+                  <Trash2 class="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -208,6 +260,65 @@
           <Plus class="w-5 h-5" />
           Add New Expense
         </button>
+      </div>
+    </div>
+
+    <!-- Edit Settlement Modal -->
+    <div v-if="editingSettlement" class="modal-overlay" @click.self="closeEditSettlement">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Edit Settlement</h3>
+          <button class="modal-close" @click="closeEditSettlement">&times;</button>
+        </div>
+        <form @submit.prevent="submitEditSettlement" class="modal-form">
+          <div class="form-group">
+            <label class="form-label">Amount (€)</label>
+            <input
+              v-model.number="editSettlementAmount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              class="form-input"
+              required
+            />
+          </div>
+          <div v-if="editSettlementError" class="form-error">
+            <AlertCircle class="w-4 h-4" />
+            {{ editSettlementError }}
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" @click="closeEditSettlement">Cancel</button>
+            <button type="submit" class="btn-submit" :disabled="editSettlementLoading">
+              <Loader2 v-if="editSettlementLoading" class="w-4 h-4 animate-spin" />
+              <span v-else>Save</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="deleteConfirm.show" class="modal-overlay" @click.self="closeDeleteConfirm">
+      <div class="modal-content modal-content--small">
+        <div class="modal-header">
+          <h3 class="modal-title">Confirm Delete</h3>
+          <button class="modal-close" @click="closeDeleteConfirm">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-text">Are you sure you want to delete this {{ deleteConfirm.type }}?</p>
+          <p class="confirm-subtext">This action cannot be undone.</p>
+        </div>
+        <div v-if="deleteConfirm.error" class="form-error mx-4">
+          <AlertCircle class="w-4 h-4" />
+          {{ deleteConfirm.error }}
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" @click="closeDeleteConfirm">Cancel</button>
+          <button type="button" class="btn-delete" :disabled="deleteConfirm.loading" @click="executeDelete">
+            <Loader2 v-if="deleteConfirm.loading" class="w-4 h-4 animate-spin" />
+            <span v-else>Delete</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -229,12 +340,18 @@ import {
   Heart,
   CreditCard,
   MoreHorizontal,
-  Wallet
+  Wallet,
+  Banknote,
+  Check,
+  Pencil,
+  Trash2
 } from 'lucide-vue-next'
 import { useGroupsStore } from '../stores/groups'
 import { useExpensesStore } from '../stores/expenses'
 import { useAuthStore } from '../stores/auth'
 import { groupService } from '../services/groupService'
+import { settlementService } from '../services/settlementService'
+import { expenseService } from '../services/expenseService'
 
 const route = useRoute()
 const router = useRouter()
@@ -251,6 +368,23 @@ const expensesLoading = computed(() => expensesStore.loading)
 // Simplified debts state
 const simplifiedDebts = ref({ transactions: [], transactionCount: 0, summary: '' })
 const simplifiedDebtsLoading = ref(false)
+
+// Settlements state
+const settlements = ref([])
+
+// Edit/Delete state
+const editingSettlement = ref(null)
+const editSettlementAmount = ref(0)
+const editSettlementLoading = ref(false)
+const editSettlementError = ref('')
+
+const deleteConfirm = ref({
+  show: false,
+  type: '', // 'expense' or 'settlement'
+  item: null,
+  loading: false,
+  error: ''
+})
 
 const getGroupIcon = (type) => {
   const icons = {
@@ -304,13 +438,14 @@ const totalOwe = computed(() => {
     .reduce((sum, e) => sum + Math.abs(e.balance), 0)
 })
 
-// Per-member pairwise balance computation
+// Per-member pairwise balance computation (including settlements)
 const memberBalances = computed(() => {
   const userId = authStore.user?._id
-  if (!userId || !expenses.value.length) return []
+  if (!userId) return []
 
   const pairwise = {} // memberId -> net amount (positive = they owe me)
 
+  // Calculate balances from expenses
   for (const expense of expenses.value) {
     // Compute each person's net in this expense (paid - split)
     const nets = {}
@@ -350,6 +485,21 @@ const memberBalances = computed(() => {
     }
   }
 
+  // Apply settlements to reduce balances
+  for (const settlement of settlements.value) {
+    const fromId = settlement.from?._id
+    const toId = settlement.to?._id
+    const amount = settlement.amount || 0
+
+    if (fromId === userId && toId) {
+      // I paid someone - reduces what I owe them (makes balance more positive)
+      pairwise[toId] = (pairwise[toId] || 0) + amount
+    } else if (toId === userId && fromId) {
+      // Someone paid me - reduces what they owe me (makes balance less positive)
+      pairwise[fromId] = (pairwise[fromId] || 0) - amount
+    }
+  }
+
   // Build member info from group members
   const membersMap = {}
   if (group.value?.members) {
@@ -375,6 +525,129 @@ const addExpense = () => {
   router.push({ path: '/create-expense', query: { groupId: route.params.id } })
 }
 
+const goToSettleUp = () => {
+  router.push(`/groups/${route.params.id}/settle-up`)
+}
+
+// Permission checks
+const canEditExpense = (expense) => {
+  return expense.createdBy?._id === authStore.user?._id
+}
+
+const canEditSettlement = (settlement) => {
+  return settlement.to?._id === authStore.user?._id
+}
+
+// Expense edit/delete
+const editExpense = (expense) => {
+  router.push({ path: '/edit-expense', query: { id: expense._id, groupId: route.params.id } })
+}
+
+const confirmDeleteExpense = (expense) => {
+  deleteConfirm.value = {
+    show: true,
+    type: 'expense',
+    item: expense,
+    loading: false,
+    error: ''
+  }
+}
+
+// Settlement edit/delete
+const editSettlement = (settlement) => {
+  editingSettlement.value = settlement
+  editSettlementAmount.value = settlement.amount
+  editSettlementError.value = ''
+}
+
+const closeEditSettlement = () => {
+  editingSettlement.value = null
+  editSettlementAmount.value = 0
+  editSettlementError.value = ''
+}
+
+const submitEditSettlement = async () => {
+  if (!editSettlementAmount.value || editSettlementAmount.value <= 0) {
+    editSettlementError.value = 'Amount must be greater than 0'
+    return
+  }
+
+  editSettlementLoading.value = true
+  editSettlementError.value = ''
+
+  try {
+    await settlementService.update(editingSettlement.value._id, {
+      amount: editSettlementAmount.value
+    })
+    closeEditSettlement()
+    await loadGroup()
+  } catch (err) {
+    editSettlementError.value = err.response?.data?.error || 'Failed to update settlement'
+  } finally {
+    editSettlementLoading.value = false
+  }
+}
+
+const confirmDeleteSettlement = (settlement) => {
+  deleteConfirm.value = {
+    show: true,
+    type: 'settlement',
+    item: settlement,
+    loading: false,
+    error: ''
+  }
+}
+
+// Delete confirmation
+const closeDeleteConfirm = () => {
+  deleteConfirm.value = {
+    show: false,
+    type: '',
+    item: null,
+    loading: false,
+    error: ''
+  }
+}
+
+const executeDelete = async () => {
+  deleteConfirm.value.loading = true
+  deleteConfirm.value.error = ''
+
+  try {
+    if (deleteConfirm.value.type === 'expense') {
+      await expenseService.delete(deleteConfirm.value.item._id)
+    } else if (deleteConfirm.value.type === 'settlement') {
+      await settlementService.delete(deleteConfirm.value.item._id)
+    }
+    closeDeleteConfirm()
+    await loadGroup()
+  } catch (err) {
+    deleteConfirm.value.error = err.response?.data?.error || `Failed to delete ${deleteConfirm.value.type}`
+  } finally {
+    deleteConfirm.value.loading = false
+  }
+}
+
+const formatSettlementFrom = (settlement) => {
+  if (settlement.from?._id === authStore.user?._id) return 'You'
+  return settlement.from?.name || 'Unknown'
+}
+
+const formatSettlementTo = (settlement) => {
+  if (settlement.to?._id === authStore.user?._id) return 'You'
+  return settlement.to?.name || 'Unknown'
+}
+
+const fetchSettlements = async () => {
+  try {
+    const data = await settlementService.getByGroup(route.params.id)
+    settlements.value = Array.isArray(data) ? data : (data.settlements || [])
+  } catch (err) {
+    console.error('Failed to load settlements:', err)
+    settlements.value = []
+  }
+}
+
 const fetchSimplifiedDebts = async () => {
   simplifiedDebtsLoading.value = true
   try {
@@ -391,6 +664,7 @@ const fetchSimplifiedDebts = async () => {
 const loadGroup = async () => {
   await groupsStore.fetchGroup(route.params.id)
   await expensesStore.fetchGroupExpenses(route.params.id)
+  await fetchSettlements()
   fetchSimplifiedDebts()
 }
 
@@ -692,5 +966,141 @@ onMounted(() => {
 
 .settlements-empty {
   @apply mt-3 text-sm text-green-500 text-center py-4 font-medium;
+}
+
+// Settle Up Button
+.btn-settle-up {
+  @apply w-full mt-4 py-3 bg-green-600 text-white rounded-xl font-semibold;
+  @apply flex items-center justify-center gap-2;
+  @apply hover:bg-green-700 transition-colors;
+}
+
+// Settlement History
+.history-list {
+  @apply mt-3 space-y-2;
+}
+
+.history-item {
+  @apply flex items-center gap-3 p-3 bg-secondary-50 rounded-lg;
+
+  &__icon {
+    @apply w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0;
+  }
+
+  &__info {
+    @apply flex-1 min-w-0;
+  }
+
+  &__desc {
+    @apply text-sm text-secondary-800;
+  }
+
+  &__meta {
+    @apply text-xs text-secondary-500 mt-0.5;
+  }
+
+  &__amount {
+    @apply text-sm font-bold text-green-600 flex-shrink-0;
+  }
+}
+
+// Item Actions
+.item-actions {
+  @apply flex items-center gap-1 ml-2;
+}
+
+.action-btn {
+  @apply w-8 h-8 rounded-full flex items-center justify-center transition-colors;
+
+  &--edit {
+    @apply text-secondary-500 hover:bg-secondary-100 hover:text-primary-600;
+  }
+
+  &--delete {
+    @apply text-secondary-500 hover:bg-red-50 hover:text-red-600;
+  }
+}
+
+// Modal Styles
+.modal-overlay {
+  @apply fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4;
+}
+
+.modal-content {
+  @apply bg-white rounded-2xl w-full max-w-md shadow-xl;
+
+  &--small {
+    @apply max-w-sm;
+  }
+}
+
+.modal-header {
+  @apply flex items-center justify-between p-4 border-b border-secondary-200;
+}
+
+.modal-title {
+  @apply text-lg font-bold text-secondary-900;
+}
+
+.modal-close {
+  @apply w-8 h-8 rounded-full hover:bg-secondary-100 text-secondary-500;
+  @apply flex items-center justify-center text-xl font-semibold transition-colors;
+}
+
+.modal-body {
+  @apply p-4;
+}
+
+.confirm-text {
+  @apply text-secondary-800 font-medium;
+}
+
+.confirm-subtext {
+  @apply text-secondary-500 text-sm mt-1;
+}
+
+.modal-form {
+  @apply p-4 space-y-4;
+}
+
+.form-group {
+  @apply space-y-1;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-secondary-700;
+}
+
+.form-input {
+  @apply w-full px-4 py-3 border border-secondary-300 rounded-xl;
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  @apply text-secondary-900;
+}
+
+.form-error {
+  @apply flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg;
+}
+
+.modal-actions {
+  @apply flex gap-3 p-4 pt-0;
+}
+
+.btn-cancel {
+  @apply flex-1 py-3 border border-secondary-300 text-secondary-700 rounded-xl;
+  @apply hover:bg-secondary-50 transition-colors font-medium;
+}
+
+.btn-submit {
+  @apply flex-1 py-3 bg-primary-600 text-white rounded-xl font-semibold;
+  @apply hover:bg-primary-700 transition-colors;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply flex items-center justify-center gap-2;
+}
+
+.btn-delete {
+  @apply flex-1 py-3 bg-red-600 text-white rounded-xl font-semibold;
+  @apply hover:bg-red-700 transition-colors;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply flex items-center justify-center gap-2;
 }
 </style>

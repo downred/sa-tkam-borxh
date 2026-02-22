@@ -5,6 +5,7 @@ import { groupService } from '../services/groupService'
 export const useGroupsStore = defineStore('groups', () => {
   const groups = ref([])
   const currentGroup = ref(null)
+  const totalBalance = ref(0)
   const loading = ref(false)
   const error = ref(null)
 
@@ -22,11 +23,23 @@ export const useGroupsStore = defineStore('groups', () => {
     try {
       const response = await groupService.getAll()
       groups.value = response.data
+      // Also fetch total balance
+      await fetchTotalBalance()
     } catch (err) {
       error.value = err.response?.data?.error || 'Failed to fetch groups'
       throw err
     } finally {
       loading.value = false
+    }
+  }
+
+  async function fetchTotalBalance() {
+    try {
+      const response = await groupService.getTotalBalance()
+      totalBalance.value = response.data.balance
+    } catch (err) {
+      console.error('Failed to fetch total balance:', err)
+      totalBalance.value = 0
     }
   }
 
@@ -147,11 +160,13 @@ export const useGroupsStore = defineStore('groups', () => {
   return {
     groups,
     currentGroup,
+    totalBalance,
     loading,
     error,
     tripGroups,
     subscriptionGroups,
     fetchGroups,
+    fetchTotalBalance,
     fetchGroup,
     createGroup,
     updateGroup,

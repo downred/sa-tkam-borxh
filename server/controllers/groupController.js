@@ -2,6 +2,37 @@ const Group = require('../models/Group');
 const Expense = require('../models/Expense');
 const Settlement = require('../models/Settlement');
 
+// Helper: Calculate a single user's balance in a group
+const getUserBalanceInGroup = async (groupId, userId) => {
+  let balance = 0;
+  
+  const expenses = await Expense.find({ group: groupId });
+  for (const expense of expenses) {
+    for (const payer of expense.paidBy) {
+      if (payer.user.toString() === userId) {
+        balance += payer.amount;
+      }
+    }
+    for (const split of expense.splits) {
+      if (split.user.toString() === userId) {
+        balance -= split.amount;
+      }
+    }
+  }
+  
+  const settlements = await Settlement.find({ group: groupId });
+  for (const settlement of settlements) {
+    if (settlement.from.toString() === userId) {
+      balance += settlement.amount;
+    }
+    if (settlement.to.toString() === userId) {
+      balance -= settlement.amount;
+    }
+  }
+  
+  return Math.round(balance * 100) / 100;
+};
+
 exports.getAllGroups = async (req, res) => {
   try {
     const groups = await Group.find({ 
@@ -14,7 +45,52 @@ exports.getAllGroups = async (req, res) => {
     .populate('createdBy', 'name email')
     .sort({ createdAt: -1 });
     
-    res.json({ success: true, data: groups });
+    // Calculate balance for each group
+    const groupsWithBalance = await Promise.all(
+      groups.map(async (group) => {
+        const balance = await getUserBalanceInGroup(group._id, req.user._id.toString());
+        return {
+          ...group.toObject(),
+          userBalance: balance
+        };
+      })
+    );
+    
+    res.json({ success: true, data: groupsWithBalance });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getTotalBalance = async (req, res) => {
+  try {
+    // Get all groups user is a member of
+    const groups = await Group.find({ 
+      $or: [
+        { createdBy: req.user._id },
+        { members: req.user._id }
+      ]
+    });
+    
+    let totalBalance = 0;
+    
+    // Calculate balance for each group
+    for (const group of groups) {
+      const balance = await getUserBalanceInGroup(group._id, req.user._id.toString());
+      totalBalance += balance;
+    }
+    
+    // Round to 2 decimal places
+    totalBalance = Math.round(totalBalance * 100) / 100;
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        balance: totalBalance,
+        isOwed: totalBalance > 0,
+        isOwing: totalBalance < 0
+      } 
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -138,37 +214,6 @@ exports.addMember = async (req, res) => {
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
-};
-
-// Helper: Calculate a single user's balance in a group
-const getUserBalanceInGroup = async (groupId, userId) => {
-  let balance = 0;
-  
-  const expenses = await Expense.find({ group: groupId });
-  for (const expense of expenses) {
-    for (const payer of expense.paidBy) {
-      if (payer.user.toString() === userId) {
-        balance += payer.amount;
-      }
-    }
-    for (const split of expense.splits) {
-      if (split.user.toString() === userId) {
-        balance -= split.amount;
-      }
-    }
-  }
-  
-  const settlements = await Settlement.find({ group: groupId });
-  for (const settlement of settlements) {
-    if (settlement.from.toString() === userId) {
-      balance += settlement.amount;
-    }
-    if (settlement.to.toString() === userId) {
-      balance -= settlement.amount;
-    }
-  }
-  
-  return Math.round(balance * 100) / 100;
 };
 
 exports.removeMember = async (req, res) => {

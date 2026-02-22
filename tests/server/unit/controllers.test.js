@@ -511,7 +511,7 @@ describe("Controllers", () => {
         });
       });
 
-      it("should return 400 when recipient is not a group member", async () => {
+      it("should return 400 when other user is not a group member", async () => {
         Group.findById.mockResolvedValue({
           _id: "g1",
           members: ["u1"],
@@ -528,7 +528,7 @@ describe("Controllers", () => {
 
         expect(res.status).toHaveBeenCalledWith(400);
         expect(res.json).toHaveBeenCalledWith({
-          error: "Recipient is not a member of this group",
+          error: "The other user is not a member of this group",
         });
       });
 
@@ -588,10 +588,10 @@ describe("Controllers", () => {
         expect(res.json).toHaveBeenCalledWith({ error: "Settlement not found" });
       });
 
-      it("should return 403 when non-sender tries to delete", async () => {
+      it("should return 403 when non-recipient tries to delete", async () => {
         Settlement.findById.mockResolvedValue({
           _id: "s1",
-          from: "u2", // Different user
+          to: "u2", // Different user (recipient is u2, not u1)
         });
 
         const req = mockRequest({}, { id: "s1" }, { _id: "u1" });
@@ -601,14 +601,14 @@ describe("Controllers", () => {
 
         expect(res.status).toHaveBeenCalledWith(403);
         expect(res.json).toHaveBeenCalledWith({
-          error: "Only the sender can delete this settlement",
+          error: "Only the recipient can delete this settlement",
         });
       });
 
-      it("should delete settlement when sender deletes", async () => {
+      it("should delete settlement when recipient deletes", async () => {
         const mockSettlement = {
           _id: "s1",
-          from: "u1",
+          to: "u1", // Recipient is u1
           deleteOne: jest.fn().mockResolvedValue(true),
         };
         Settlement.findById.mockResolvedValue(mockSettlement);
@@ -777,6 +777,153 @@ describe("Controllers", () => {
 
         expect(res.status).toHaveBeenCalledWith(404);
         expect(res.json).toHaveBeenCalledWith({ error: "Expense not found" });
+      });
+    });
+  });
+
+  // ───────────────────────────────────────────────
+  // Group Controller Tests
+  // ───────────────────────────────────────────────
+  describe("GroupController", () => {
+    describe("getTotalBalance", () => {
+      it("should calculate total balance across all user's groups", async () => {
+        const mockGroups = [
+          { _id: "group1", name: "Group 1" },
+          { _id: "group2", name: "Group 2" },
+        ];
+
+        Group.find.mockResolvedValue(mockGroups);
+
+        // Mock expenses for group1: user is owed 50
+        // Mock expenses for group2: user owes 30
+        Expense.find = jest
+          .fn()
+          .mockResolvedValueOnce([
+            {
+              paidBy: [{ user: "userId", amount: 100 }],
+              splits: [{ user: "userId", amount: 50 }],
+            },
+          ])
+          .mockResolvedValueOnce([
+            {
+              paidBy: [{ user: "userId", amount: 20 }],
+              splits: [{ user: "userId", amount: 50 }],
+            },
+          ]);
+
+        Settlement.find = jest.fn().mockResolvedValue([]);
+
+        const req = mockRequest({}, {}, { _id: "userId" });
+        const res = mockResponse();
+
+        await groupController.getTotalBalance(req, res);
+
+        expect(res.json).toHaveBeenCalledWith({
+          success: true,
+          data: {
+            balance: 20, // (100-50) + (20-50) = 20
+            isOwed: true,
+            isOwing: false,
+          },
+        });
+      });
+
+      it("should return zero when user has no groups", async () => {
+        Group.find.mockResolvedValue([]);
+
+        const req = mockRequest({}, {}, { _id: "userId" });
+        const res = mockResponse();
+
+        await groupController.getTotalBalance(req, res);
+
+        expect(res.json).toHaveBeenCalledWith({
+          success: true,
+          data: {
+            balance: 0,
+            isOwed: false,
+            isOwing: false,
+          },
+        });
+      });
+
+      it("should return negative balance when user owes money", async () => {
+        const mockGroups = [{ _id: "group1", name: "Group 1" }];
+
+        Group.find.mockResolvedValue(mockGroups);
+
+        // User paid 30, owes 100 = balance -70
+        Expense.find.mockResolvedValue([
+          {
+            paidBy: [{ user: "userId", amount: 30 }],
+            splits: [{ user: "userId", amount: 100 }],
+          },
+        ]);
+
+        Settlement.find.mockResolvedValue([]);
+
+        const req = mockRequest({}, {}, { _id: "userId" });
+        const res = mockResponse();
+
+        await groupController.getTotalBalance(req, res);
+
+        expect(res.json).toHaveBeenCalledWith({
+          success: true,
+          data: {
+            balance: -70,
+            isOwed: false,
+            isOwing: true,
+          },
+        });
+      });
+
+      it("should handle settlements in balance calculation", async () => {
+        const mockGroups = [{ _id: "group1", name: "Group 1" }];
+
+        Group.find.mockResolvedValue(mockGroups);
+
+        // User paid 100, owes 50 = +50
+        Expense.find.mockResolvedValue([
+          {
+            paidBy: [{ user: "userId", amount: 100 }],
+            splits: [{ user: "userId", amount: 50 }],
+          },
+        ]);
+
+        // User sent 20 to someone (from = userId means +20 to balance)
+        Settlement.find.mockResolvedValue([
+          {
+            from: "userId",
+            to: "otherUser",
+            amount: 20,
+          },
+        ]);
+
+        const req = mockRequest({}, {}, { _id: "userId" });
+        const res = mockResponse();
+
+        await groupController.getTotalBalance(req, res);
+
+        // 50 (from expenses) + 20 (from settlement) = 70
+        expect(res.json).toHaveBeenCalledWith({
+          success: true,
+          data: {
+            balance: 70,
+            isOwed: true,
+            isOwing: false,
+          },
+        });
+      });
+
+      it("should return 500 on error", async () => {
+        Group.find.mockRejectedValue(new Error("Database error"));
+
+        const req = mockRequest({}, {}, { _id: "userId" });
+        const res = mockResponse();
+
+        await groupController.getTotalBalance(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith({ error: "Database error" });
       });
     });
   });

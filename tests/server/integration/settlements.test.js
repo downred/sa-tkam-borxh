@@ -221,7 +221,7 @@ describe("Settlements API", () => {
           });
 
         expect(response.status).toBe(400);
-        expect(response.body.error).toBe("Recipient is not a member of this group");
+        expect(response.body.error).toBe("The other user is not a member of this group");
       });
     });
 
@@ -316,8 +316,8 @@ describe("Settlements API", () => {
         const mockSettlement = {
           _id: "s1",
           group: groupId,
-          from: mockUser._id,
-          to: mockUser2._id,
+          from: mockUser2._id,
+          to: mockUser._id, // Current user is the recipient
           amount: 50,
           deleteOne: jest.fn().mockResolvedValue(true),
         };
@@ -351,8 +351,8 @@ describe("Settlements API", () => {
         const mockSettlement = {
           _id: "s1",
           group: groupId,
-          from: mockUser2._id, // Different user created this
-          to: mockUser._id,
+          from: mockUser._id,
+          to: mockUser2._id, // Different user is the recipient
           amount: 50,
         };
 
@@ -363,7 +363,7 @@ describe("Settlements API", () => {
           .set("Authorization", `Bearer ${validToken}`);
 
         expect(response.status).toBe(403);
-        expect(response.body.error).toBe("Only the sender can delete this settlement");
+        expect(response.body.error).toBe("Only the recipient can delete this settlement");
       });
     });
 
@@ -373,6 +373,161 @@ describe("Settlements API", () => {
           .delete("/api/settlements/s1");
 
         expect(response.status).toBe(401);
+      });
+    });
+  });
+
+  // ───────────────────────────────────────────────
+  // PUT /api/settlements/:id
+  // ───────────────────────────────────────────────
+  describe("Update Settlement", () => {
+    describe("when updating own settlement", () => {
+      it("should update the settlement amount successfully", async () => {
+        const mockSettlement = {
+          _id: "s1",
+          group: groupId,
+          from: mockUser2._id,
+          to: mockUser._id, // Current user is the recipient
+          amount: 50,
+          save: jest.fn().mockResolvedValue(true),
+          populate: jest.fn().mockReturnThis(),
+        };
+
+        Settlement.findById = jest.fn().mockResolvedValue(mockSettlement);
+
+        const response = await request(app)
+          .put("/api/settlements/s1")
+          .set("Authorization", `Bearer ${validToken}`)
+          .send({ amount: 75 });
+
+        expect(response.status).toBe(200);
+        expect(mockSettlement.amount).toBe(75);
+      });
+    });
+
+    describe("when settlement does not exist", () => {
+      it("should return 404 error", async () => {
+        Settlement.findById = jest.fn().mockResolvedValue(null);
+
+        const response = await request(app)
+          .put("/api/settlements/nonexistent")
+          .set("Authorization", `Bearer ${validToken}`)
+          .send({ amount: 75 });
+
+        expect(response.status).toBe(404);
+        expect(response.body.error).toBe("Settlement not found");
+      });
+    });
+
+    describe("when trying to update someone else's settlement", () => {
+      it("should return 403 error", async () => {
+        const mockSettlement = {
+          _id: "s1",
+          group: groupId,
+          from: mockUser._id,
+          to: mockUser2._id, // Different user is the recipient
+          amount: 50,
+        };
+
+        Settlement.findById = jest.fn().mockResolvedValue(mockSettlement);
+
+        const response = await request(app)
+          .put("/api/settlements/s1")
+          .set("Authorization", `Bearer ${validToken}`)
+          .send({ amount: 75 });
+
+        expect(response.status).toBe(403);
+        expect(response.body.error).toBe("Only the recipient can update this settlement");
+      });
+    });
+
+    describe("when amount is invalid", () => {
+      it("should return 400 error for zero amount", async () => {
+        const mockSettlement = {
+          _id: "s1",
+          group: groupId,
+          from: mockUser2._id,
+          to: mockUser._id,
+          amount: 50,
+        };
+
+        Settlement.findById = jest.fn().mockResolvedValue(mockSettlement);
+
+        const response = await request(app)
+          .put("/api/settlements/s1")
+          .set("Authorization", `Bearer ${validToken}`)
+          .send({ amount: 0 });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toBe("Amount must be greater than 0");
+      });
+    });
+
+    describe("when not authenticated", () => {
+      it("should return 401 error", async () => {
+        const response = await request(app)
+          .put("/api/settlements/s1")
+          .send({ amount: 75 });
+
+        expect(response.status).toBe(401);
+      });
+    });
+  });
+
+  // ───────────────────────────────────────────────
+  // Create Settlement with 'from' field (bidirectional)
+  // ───────────────────────────────────────────────
+  describe("Create Settlement (recording payment received)", () => {
+    describe("when creating with 'from' field", () => {
+      it("should create settlement where logged-in user is recipient", async () => {
+        Group.findById = jest.fn().mockResolvedValue(mockGroup);
+        
+        const mockSettlement = {
+          _id: "s1",
+          group: groupId,
+          from: mockUser2._id,
+          to: mockUser._id, // Logged-in user as recipient
+          amount: 50,
+          save: jest.fn().mockResolvedValue(true),
+          populate: jest.fn().mockResolvedValue({
+            _id: "s1",
+            group: groupId,
+            from: mockUser2,
+            to: mockUser,
+            amount: 50,
+          }),
+        };
+
+        Settlement.prototype.save = jest.fn().mockResolvedValue(mockSettlement);
+        Settlement.prototype.populate = jest.fn().mockResolvedValue(mockSettlement);
+
+        const response = await request(app)
+          .post("/api/settlements")
+          .set("Authorization", `Bearer ${validToken}`)
+          .send({
+            groupId: groupId,
+            from: mockUser2._id, // Recording that mockUser2 paid mockUser
+            amount: 50,
+          });
+
+        expect(response.status).toBe(201);
+      });
+    });
+
+    describe("when neither from nor to is provided", () => {
+      it("should return 400 error", async () => {
+        Group.findById = jest.fn().mockResolvedValue(mockGroup);
+
+        const response = await request(app)
+          .post("/api/settlements")
+          .set("Authorization", `Bearer ${validToken}`)
+          .send({
+            groupId: groupId,
+            amount: 50,
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toBe("Must specify either from or to user");
       });
     });
   });

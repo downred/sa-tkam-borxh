@@ -43,6 +43,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/edit-expense',
+    name: 'EditExpense',
+    component: () => import('../views/EditExpenseView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/account',
     name: 'Account',
     component: () => import('../views/Account.vue'),
@@ -64,6 +70,18 @@ const routes = [
     path: '/groups/:id',
     name: 'GroupDetails',
     component: () => import('../views/GroupDetails.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/groups/:id/settle-up',
+    name: 'SettleUpSelect',
+    component: () => import('../views/SettleUpSelect.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/groups/:id/settle-up/:memberId',
+    name: 'SettleUpAmount',
+    component: () => import('../views/SettleUpAmount.vue'),
     meta: { requiresAuth: true }
   }
 ]

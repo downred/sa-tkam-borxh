@@ -309,6 +309,15 @@ Given('I am on the add members page', async ({ page }) => {
     }
   });
   
+  // Mock the groups balance total API
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: { balance: 0 } })
+    });
+  });
+  
   // Mock the friends API
   await page.route('**/api/friends', async (route) => {
     await route.fulfill({
@@ -553,6 +562,26 @@ Given('the API will return a successful registration response', async ({ page })
       })
     });
   });
+  
+  // Mock groups API that's called after redirect
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().url().includes('/balance/total')) {
+      return route.continue();
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: [] })
+    });
+  });
+  
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: { balance: 0 } })
+    });
+  });
 });
 
 Given('the API will return a successful login response', async ({ page }) => {
@@ -569,6 +598,26 @@ Given('the API will return a successful login response', async ({ page }) => {
           token: 'mock-jwt-token'
         }
       })
+    });
+  });
+  
+  // Mock groups API that's called after redirect
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().url().includes('/balance/total')) {
+      return route.continue();
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: [] })
+    });
+  });
+  
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: { balance: 0 } })
     });
   });
 });
@@ -712,6 +761,24 @@ Given('I am logged in', async ({ page }) => {
       })
     });
   });
+  
+  // Mock groups API to prevent 401 errors from unmocked endpoints
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: { balance: 0 } })
+    });
+  });
+  
+  await page.route('**/api/groups', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: [] })
+    });
+  });
+  
   // Use addInitScript to set auth before page loads
   await page.addInitScript(() => {
     localStorage.setItem('token', 'mock-jwt-token');
@@ -810,8 +877,12 @@ Given('the API will return a user not found error', async ({ page }) => {
         contentType: 'application/json',
         body: JSON.stringify({ error: 'User not found' })
       });
-    } else {
-      await route.continue();
+    } else if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([])
+      });
     }
   });
 });
@@ -899,6 +970,16 @@ Given('I am on the groups page', async ({ page }) => {
       });
     }
   });
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ 
+        success: true, 
+        data: { balance: 0, isOwed: false, isOwing: false } 
+      })
+    });
+  });
   await page.goto('/groups');
 });
 
@@ -912,6 +993,16 @@ Given('I have no groups', async ({ page }) => {
       });
     }
   });
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ 
+        success: true, 
+        data: { balance: 0, isOwed: false, isOwing: false } 
+      })
+    });
+  });
 });
 
 Given('I have groups in my list', async ({ page }) => {
@@ -923,12 +1014,22 @@ Given('I have groups in my list', async ({ page }) => {
         body: JSON.stringify({
           success: true,
           data: [
-            { _id: 'group1', name: 'Trip to Paris', type: 'Trip', members: [{ _id: 'u1' }, { _id: 'u2' }] },
-            { _id: 'group2', name: 'Home Expenses', type: 'Home', members: [{ _id: 'u1' }] }
+            { _id: 'group1', name: 'Trip to Paris', type: 'Trip', members: [{ _id: 'u1' }, { _id: 'u2' }], userBalance: 75.50 },
+            { _id: 'group2', name: 'Home Expenses', type: 'Home', members: [{ _id: 'u1' }], userBalance: -25.50 }
           ]
         })
       });
     }
+  });
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ 
+        success: true, 
+        data: { balance: 50, isOwed: true, isOwing: false } 
+      })
+    });
   });
   await page.goto('/groups');
 });
@@ -942,16 +1043,135 @@ Given('I have groups of different types', async ({ page }) => {
         body: JSON.stringify({
           success: true,
           data: [
-            { _id: 'g1', name: 'Trip Group', type: 'Trip', members: [{ _id: 'u1' }] },
-            { _id: 'g2', name: 'Home Group', type: 'Home', members: [{ _id: 'u1' }] },
-            { _id: 'g3', name: 'Family Group', type: 'Family', members: [{ _id: 'u1' }] },
-            { _id: 'g4', name: 'Subscription Group', type: 'Subscription', members: [{ _id: 'u1' }] }
+            { _id: 'g1', name: 'Trip Group', type: 'Trip', members: [{ _id: 'u1' }], userBalance: 30 },
+            { _id: 'g2', name: 'Home Group', type: 'Home', members: [{ _id: 'u1' }], userBalance: -20 },
+            { _id: 'g3', name: 'Family Group', type: 'Family', members: [{ _id: 'u1' }], userBalance: 0 },
+            { _id: 'g4', name: 'Subscription Group', type: 'Subscription', members: [{ _id: 'u1' }], userBalance: 15 }
           ]
         })
       });
     }
   });
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ 
+        success: true, 
+        data: { balance: 0, isOwed: false, isOwing: false } 
+      })
+    });
+  });
   await page.goto('/groups');
+});
+
+// Overall Balance steps
+Given('I have groups with a positive overall balance', async ({ page }) => {
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [
+            { _id: 'group1', name: 'Trip to Paris', type: 'Trip', members: [{ _id: 'u1' }, { _id: 'u2' }], userBalance: 150.50 }
+          ]
+        })
+      });
+    }
+  });
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ 
+        success: true, 
+        data: { balance: 150.50, isOwed: true, isOwing: false } 
+      })
+    });
+  });
+  await page.goto('/groups');
+});
+
+Given('I have groups with a negative overall balance', async ({ page }) => {
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [
+            { _id: 'group1', name: 'Home Expenses', type: 'Home', members: [{ _id: 'u1' }, { _id: 'u2' }], userBalance: -75.25 }
+          ]
+        })
+      });
+    }
+  });
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ 
+        success: true, 
+        data: { balance: -75.25, isOwed: false, isOwing: true } 
+      })
+    });
+  });
+  await page.goto('/groups');
+});
+
+Given('I have groups with zero balance', async ({ page }) => {
+  await page.route('**/api/groups', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [
+            { _id: 'group1', name: 'Settled Group', type: 'Other', members: [{ _id: 'u1' }], userBalance: 0 }
+          ]
+        })
+      });
+    }
+  });
+  await page.route('**/api/groups/balance/total', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ 
+        success: true, 
+        data: { balance: 0, isOwed: false, isOwing: false } 
+      })
+    });
+  });
+  await page.goto('/groups');
+});
+
+Then('I should see the overall balance card', async ({ page }) => {
+  await expect(page.locator('.balance-card')).toBeVisible();
+});
+
+Then('I should not see the overall balance card', async ({ page }) => {
+  await expect(page.locator('.balance-card')).not.toBeVisible();
+});
+
+Then('I should see the balance amount {string}', async ({ page }, amount) => {
+  await expect(page.locator('.balance-amount')).toContainText(amount);
+});
+
+Then('I should see {string} balance status', async ({ page }, statusText) => {
+  await expect(page.locator('.balance-info')).toContainText(statusText);
+});
+
+Then('the balance should be displayed in green', async ({ page }) => {
+  await expect(page.locator('.balance-amount.balance-positive')).toBeVisible();
+});
+
+Then('the balance should be displayed in red', async ({ page }) => {
+  await expect(page.locator('.balance-amount.balance-negative')).toBeVisible();
 });
 
 Then('I should see the groups count', async ({ page }) => {
@@ -997,4 +1217,17 @@ Then('Family groups should show heart icon', async ({ page }) => {
 
 Then('Subscription groups should show credit card icon', async ({ page }) => {
   await expect(page.locator('.group-icon--subscription')).toBeVisible();
+});
+
+// Per-group balance steps
+Then('I should see balance amount on each group', async ({ page }) => {
+  await expect(page.locator('.group-item .group-balance-amount').first()).toBeVisible();
+});
+
+Then('groups I am owed show green balance', async ({ page }) => {
+  await expect(page.locator('.group-balance--positive .group-balance-amount')).toBeVisible();
+});
+
+Then('groups I owe show red balance', async ({ page }) => {
+  await expect(page.locator('.group-balance--negative .group-balance-amount')).toBeVisible();
 });
