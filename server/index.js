@@ -12,6 +12,7 @@ const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const settlementRoutes = require('./routes/settlementRoutes');
+const activityRoutes = require('./routes/activityRoutes');
 
 
 app.use(cors({
@@ -45,6 +46,8 @@ app.use('/api/groups', groupRoutes);
 app.use('/api', expenseRoutes);
 // Settlement routes
 app.use('/api', settlementRoutes);
+// Activity routes
+app.use('/api/activities', activityRoutes);
 
 
 app.use(

@@ -320,6 +320,12 @@ describe("Settlements API", () => {
           to: mockUser._id, // Current user is the recipient
           amount: 50,
           deleteOne: jest.fn().mockResolvedValue(true),
+          populate: jest.fn().mockImplementation(function() {
+            // Mock populate to set from/to with name property
+            this.from = { _id: mockUser2._id, name: "User2", email: "user2@test.com" };
+            this.to = { _id: mockUser._id, name: "TestUser", email: "test@example.com" };
+            return Promise.resolve(this);
+          }),
         };
 
         Settlement.findById = jest.fn().mockResolvedValue(mockSettlement);

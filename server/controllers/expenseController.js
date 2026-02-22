@@ -1,6 +1,7 @@
 const Expense = require('../models/Expense');
 const Settlement = require('../models/Settlement');
 const Group = require('../models/Group');
+const { logActivity } = require('./activityController');
 
 // Zero-Sum Integrity: Verify expense paid amounts equal split amounts
 const validateExpenseZeroSum = (paidBy, splits, amount) => {
@@ -215,6 +216,21 @@ exports.createExpense = async (req, res) => {
     await expense.populate('splits.user', 'name email');
     await expense.populate('createdBy', 'name email');
 
+    // Log activity
+    await logActivity({
+      group: groupId,
+      user: req.user._id,
+      type: 'expense_added',
+      description: `added "${description}" for €${Math.abs(amount).toFixed(2)}`,
+      metadata: {
+        entityId: expense._id,
+        entityType: 'expense',
+        amount,
+        description,
+        involvedUsers: [...new Set([...paidBy.map(p => p.user), ...splits.map(s => s.user)])]
+      }
+    });
+
     res.status(201).json(expense);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -272,10 +288,52 @@ exports.updateExpense = async (req, res) => {
       }
     }
 
+    // Store previous values for activity log
+    const previousAmount = expense.amount;
+    const previousDescription = expense.description;
+    const previousPaidBy = JSON.stringify(expense.paidBy.map(p => ({ user: p.user.toString(), amount: p.amount })));
+    const previousSplits = JSON.stringify(expense.splits.map(s => ({ user: s.user.toString(), amount: s.amount })));
+
     Object.assign(expense, req.body);
     await expense.save();
     await expense.populate('paidBy.user', 'name email');
     await expense.populate('splits.user', 'name email');
+
+    // Compare new values for activity log (handle both populated and unpopulated cases)
+    const getUserId = (user) => user?._id?.toString() || user?.toString() || user;
+    const newPaidByStr = JSON.stringify(expense.paidBy.map(p => ({ user: getUserId(p.user), amount: p.amount })));
+    const newSplitsStr = JSON.stringify(expense.splits.map(s => ({ user: getUserId(s.user), amount: s.amount })));
+
+    // Build detailed change description
+    const changes = [];
+    if (previousDescription !== expense.description) {
+      changes.push(`renamed "${previousDescription}" → "${expense.description}"`);
+    }
+    if (Math.abs(previousAmount - expense.amount) > 0.01) {
+      changes.push(`amount €${previousAmount.toFixed(2)} → €${expense.amount.toFixed(2)}`);
+    }
+    if (previousPaidBy !== newPaidByStr) changes.push('updated payers');
+    if (previousSplits !== newSplitsStr) changes.push('updated split');
+    
+    const changeDesc = changes.length > 0 
+      ? changes.join(', ')
+      : `updated "${expense.description}"`;
+
+    // Log activity
+    await logActivity({
+      group: expense.group,
+      user: req.user._id,
+      type: 'expense_edited',
+      description: changeDesc,
+      metadata: {
+        entityId: expense._id,
+        entityType: 'expense',
+        amount: expense.amount,
+        previousAmount,
+        description: expense.description,
+        previousDescription
+      }
+    });
 
     res.json(expense);
   } catch (error) {
@@ -318,7 +376,25 @@ exports.deleteExpense = async (req, res) => {
       }
     }
 
+    // Store info for activity log before deletion
+    const deletedDescription = expense.description;
+    const deletedAmount = expense.amount;
+    const groupId = expense.group;
+
     await expense.deleteOne();
+
+    // Log activity
+    await logActivity({
+      group: groupId,
+      user: req.user._id,
+      type: 'expense_deleted',
+      description: `deleted "${deletedDescription}" (€${Math.abs(deletedAmount).toFixed(2)})`,
+      metadata: {
+        entityType: 'expense',
+        amount: deletedAmount,
+        description: deletedDescription
+      }
+    });
     
     res.json({ 
       message: 'Expense deleted successfully',

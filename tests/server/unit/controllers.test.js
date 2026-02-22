@@ -609,8 +609,18 @@ describe("Controllers", () => {
         const mockSettlement = {
           _id: "s1",
           to: "u1", // Recipient is u1
+          from: { name: "Alice", email: "alice@test.com" },
+          group: "g1",
+          amount: 50,
           deleteOne: jest.fn().mockResolvedValue(true),
+          populate: jest.fn().mockImplementation(function() {
+            // Mock populate to set from/to with name property
+            this.from = { name: "Alice", email: "alice@test.com" };
+            this.to = { name: "Bob", email: "bob@test.com" };
+            return Promise.resolve(this);
+          }),
         };
+        mockSettlement.to = { toString: () => "u1", name: "Bob" };
         Settlement.findById.mockResolvedValue(mockSettlement);
 
         const req = mockRequest({}, { id: "s1" }, { _id: "u1" });
