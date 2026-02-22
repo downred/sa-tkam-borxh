@@ -11,6 +11,8 @@ jest.mock("@scalar/express-api-reference", () => ({
 }));
 
 let app;
+let jwt;
+let validToken;
 
 const mockUser = {
   _id: "507f1f77bcf86cd799439011",
@@ -28,6 +30,8 @@ describe("Users API", () => {
     mongoose.connect = jest.fn().mockResolvedValue(true);
 
     app = require("../../../server/index");
+    jwt = require("../../../server/node_modules/jsonwebtoken");
+    validToken = jwt.sign({ id: mockUser._id }, process.env.JWT_SECRET);
   });
 
   afterAll(async () => {
@@ -39,6 +43,8 @@ describe("Users API", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default auth mock - auth middleware calls User.findById
+    User.findById = jest.fn().mockResolvedValue(mockUser);
   });
 
   describe("GET /api/users", () => {
@@ -50,7 +56,9 @@ describe("Users API", () => {
           sort: jest.fn().mockResolvedValue(mockUsers),
         });
 
-        const response = await request(app).get("/api/users");
+        const response = await request(app)
+          .get("/api/users")
+          .set("Authorization", "Bearer " + validToken);
 
         expect(response.status).toBe(200);
         expect(Array.isArray(response.body)).toBe(true);
@@ -64,10 +72,20 @@ describe("Users API", () => {
           sort: jest.fn().mockResolvedValue([]),
         });
 
-        const response = await request(app).get("/api/users");
+        const response = await request(app)
+          .get("/api/users")
+          .set("Authorization", "Bearer " + validToken);
 
         expect(response.status).toBe(200);
         expect(response.body).toEqual([]);
+      });
+    });
+    
+    describe("when not authenticated", () => {
+      it("should return 401", async () => {
+        const response = await request(app).get("/api/users");
+
+        expect(response.status).toBe(401);
       });
     });
   });
@@ -75,9 +93,13 @@ describe("Users API", () => {
   describe("GET /api/users/:id", () => {
     describe("when user exists", () => {
       it("should return the user", async () => {
-        User.findById = jest.fn().mockResolvedValue(mockUser);
+        User.findById = jest.fn()
+          .mockResolvedValueOnce(mockUser)  // For auth middleware
+          .mockResolvedValueOnce(mockUser); // For getUserById
 
-        const response = await request(app).get(`/api/users/${mockUser._id}`);
+        const response = await request(app)
+          .get(`/api/users/${mockUser._id}`)
+          .set("Authorization", "Bearer " + validToken);
 
         expect(response.status).toBe(200);
         expect(response.body.name).toBe(mockUser.name);
@@ -87,9 +109,13 @@ describe("Users API", () => {
 
     describe("when user does not exist", () => {
       it("should return 404", async () => {
-        User.findById = jest.fn().mockResolvedValue(null);
+        User.findById = jest.fn()
+          .mockResolvedValueOnce(mockUser)  // For auth middleware
+          .mockResolvedValueOnce(null);     // For getUserById
 
-        const response = await request(app).get("/api/users/nonexistent123456");
+        const response = await request(app)
+          .get("/api/users/nonexistent123456")
+          .set("Authorization", "Bearer " + validToken);
 
         expect(response.status).toBe(404);
         expect(response.body.error).toBe("User not found");
@@ -113,6 +139,7 @@ describe("Users API", () => {
 
         const response = await request(app)
           .post("/api/users")
+          .set("Authorization", "Bearer " + validToken)
           .send(newUser);
 
         expect(response.status).toBe(201);
@@ -125,6 +152,7 @@ describe("Users API", () => {
 
         const response = await request(app)
           .post("/api/users")
+          .set("Authorization", "Bearer " + validToken)
           .send({ email: "invalid" });
 
         expect(response.status).toBe(400);
@@ -142,6 +170,7 @@ describe("Users API", () => {
 
         const response = await request(app)
           .put(`/api/users/${mockUser._id}`)
+          .set("Authorization", "Bearer " + validToken)
           .send({ name: "Updated Name" });
 
         expect(response.status).toBe(200);
@@ -155,6 +184,7 @@ describe("Users API", () => {
 
         const response = await request(app)
           .put("/api/users/nonexistent123456")
+          .set("Authorization", "Bearer " + validToken)
           .send({ name: "Updated Name" });
 
         expect(response.status).toBe(404);
@@ -168,7 +198,9 @@ describe("Users API", () => {
       it("should delete the user", async () => {
         User.findByIdAndDelete = jest.fn().mockResolvedValue(mockUser);
 
-        const response = await request(app).delete(`/api/users/${mockUser._id}`);
+        const response = await request(app)
+          .delete(`/api/users/${mockUser._id}`)
+          .set("Authorization", "Bearer " + validToken);
 
         expect(response.status).toBe(200);
         expect(response.body.message).toBe("User deleted successfully");
@@ -179,7 +211,9 @@ describe("Users API", () => {
       it("should return 404", async () => {
         User.findByIdAndDelete = jest.fn().mockResolvedValue(null);
 
-        const response = await request(app).delete("/api/users/nonexistent123456");
+        const response = await request(app)
+          .delete("/api/users/nonexistent123456")
+          .set("Authorization", "Bearer " + validToken);
 
         expect(response.status).toBe(404);
         expect(response.body.error).toBe("User not found");

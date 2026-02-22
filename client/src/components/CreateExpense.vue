@@ -135,9 +135,127 @@
           <span class="payer-option__name">{{ member.id === 'you' ? 'You' : member.name }}</span>
         </button>
       </div>
-      <p v-if="selectedSplitMembers.length > 0 && amount" class="split-among__preview">
+
+      <!-- Split Type Selector -->
+      <div class="split-type">
+        <label class="split-type__label">Split type</label>
+        <div class="split-type__options">
+          <button
+            v-for="type in splitTypes"
+            :key="type.value"
+            type="button"
+            class="split-type__btn"
+            :class="{ 'split-type__btn--active': splitType === type.value }"
+            @click="splitType = type.value"
+          >
+            {{ type.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Equal Split Preview -->
+      <p v-if="splitType === 'equal' && selectedSplitMembers.length > 0 && amount" class="split-among__preview">
         €{{ splitPreviewAmount }} per person (equal split)
       </p>
+
+      <!-- Exact Amounts -->
+      <div v-if="splitType === 'exact' && selectedSplitMembers.length > 0" class="split-values">
+        <div class="split-values__header">
+          <span class="split-values__label">Exact amounts</span>
+          <button type="button" class="split-values__even" @click="splitExactEvenly">
+            Split evenly
+          </button>
+        </div>
+        <div class="split-values__list">
+          <div v-for="memberId in selectedSplitMembers" :key="memberId" class="split-value-item">
+            <div class="split-value-item__info">
+              <div class="split-value-item__avatar">{{ getMemberName(memberId).charAt(0) }}</div>
+              <span class="split-value-item__name">{{ memberId === 'you' ? 'You' : getMemberName(memberId) }}</span>
+            </div>
+            <div class="split-value-item__input">
+              <span class="split-value-item__symbol">€</span>
+              <input
+                v-model="splitExactAmounts[memberId]"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                class="split-value-item__field"
+              />
+            </div>
+          </div>
+        </div>
+        <p v-if="exactTotal !== parseFloat(amount || 0)" class="split-values__warning">
+          Total: €{{ exactTotal.toFixed(2) }} / €{{ parseFloat(amount || 0).toFixed(2) }}
+        </p>
+      </div>
+
+      <!-- Percentage Split -->
+      <div v-if="splitType === 'percentage' && selectedSplitMembers.length > 0" class="split-values">
+        <div class="split-values__header">
+          <span class="split-values__label">Percentage per person</span>
+          <button type="button" class="split-values__even" @click="splitPercentageEvenly">
+            Split evenly
+          </button>
+        </div>
+        <div class="split-values__list">
+          <div v-for="memberId in selectedSplitMembers" :key="memberId" class="split-value-item">
+            <div class="split-value-item__info">
+              <div class="split-value-item__avatar">{{ getMemberName(memberId).charAt(0) }}</div>
+              <span class="split-value-item__name">{{ memberId === 'you' ? 'You' : getMemberName(memberId) }}</span>
+            </div>
+            <div class="split-value-item__input">
+              <input
+                v-model="splitPercentages[memberId]"
+                type="number"
+                step="1"
+                min="0"
+                max="100"
+                placeholder="0"
+                class="split-value-item__field split-value-item__field--short"
+              />
+              <span class="split-value-item__symbol split-value-item__symbol--right">%</span>
+            </div>
+            <span class="split-value-item__preview">€{{ getPercentageAmount(memberId) }}</span>
+          </div>
+        </div>
+        <p v-if="percentageTotal !== 100" class="split-values__warning">
+          Total: {{ percentageTotal }}% / 100%
+        </p>
+      </div>
+
+      <!-- Shares Split -->
+      <div v-if="splitType === 'shares' && selectedSplitMembers.length > 0" class="split-values">
+        <div class="split-values__header">
+          <span class="split-values__label">Shares per person</span>
+          <button type="button" class="split-values__even" @click="splitSharesEvenly">
+            Equal shares
+          </button>
+        </div>
+        <div class="split-values__list">
+          <div v-for="memberId in selectedSplitMembers" :key="memberId" class="split-value-item">
+            <div class="split-value-item__info">
+              <div class="split-value-item__avatar">{{ getMemberName(memberId).charAt(0) }}</div>
+              <span class="split-value-item__name">{{ memberId === 'you' ? 'You' : getMemberName(memberId) }}</span>
+            </div>
+            <div class="split-value-item__input">
+              <input
+                v-model="splitShares[memberId]"
+                type="number"
+                step="1"
+                min="0"
+                placeholder="1"
+                class="split-value-item__field split-value-item__field--short"
+              />
+              <span class="split-value-item__symbol split-value-item__symbol--right">shares</span>
+            </div>
+            <span class="split-value-item__preview">€{{ getShareAmount(memberId) }}</span>
+          </div>
+        </div>
+        <p class="split-values__total">
+          Total: {{ totalShares }} shares (€{{ getShareValue }} per share)
+        </p>
+      </div>
     </div>
 
     <!-- Error -->
@@ -182,6 +300,17 @@ const payerAmounts = reactive({})
 const selectedSplitMembers = ref([])
 const submitting = ref(false)
 const submitError = ref(null)
+const splitType = ref('equal')
+const splitExactAmounts = reactive({})
+const splitPercentages = reactive({})
+const splitShares = reactive({})
+
+const splitTypes = [
+  { value: 'equal', label: 'Equal' },
+  { value: 'exact', label: 'Exact' },
+  { value: 'percentage', label: '%' },
+  { value: 'shares', label: 'Shares' }
+]
 
 const groupName = computed(() => props.group?.name || 'Unknown Group')
 
@@ -262,6 +391,67 @@ const splitPreviewAmount = computed(() => {
   return (parseFloat(amount.value) / selectedSplitMembers.value.length).toFixed(2)
 })
 
+// Exact split
+const exactTotal = computed(() => {
+  return selectedSplitMembers.value.reduce((sum, id) => {
+    return sum + (parseFloat(splitExactAmounts[id]) || 0)
+  }, 0)
+})
+
+const splitExactEvenly = () => {
+  if (!amount.value || selectedSplitMembers.value.length === 0) return
+  const splitAmount = (parseFloat(amount.value) / selectedSplitMembers.value.length).toFixed(2)
+  selectedSplitMembers.value.forEach(id => {
+    splitExactAmounts[id] = splitAmount
+  })
+}
+
+// Percentage split
+const percentageTotal = computed(() => {
+  return selectedSplitMembers.value.reduce((sum, id) => {
+    return sum + (parseFloat(splitPercentages[id]) || 0)
+  }, 0)
+})
+
+const getPercentageAmount = (memberId) => {
+  const pct = parseFloat(splitPercentages[memberId]) || 0
+  const total = parseFloat(amount.value) || 0
+  return ((pct / 100) * total).toFixed(2)
+}
+
+const splitPercentageEvenly = () => {
+  if (selectedSplitMembers.value.length === 0) return
+  const pct = Math.floor(100 / selectedSplitMembers.value.length)
+  const remainder = 100 - (pct * selectedSplitMembers.value.length)
+  selectedSplitMembers.value.forEach((id, index) => {
+    splitPercentages[id] = index === 0 ? pct + remainder : pct
+  })
+}
+
+// Shares split
+const totalShares = computed(() => {
+  return selectedSplitMembers.value.reduce((sum, id) => {
+    return sum + (parseInt(splitShares[id]) || 0)
+  }, 0)
+})
+
+const getShareValue = computed(() => {
+  if (totalShares.value === 0) return '0.00'
+  return ((parseFloat(amount.value) || 0) / totalShares.value).toFixed(2)
+})
+
+const getShareAmount = (memberId) => {
+  const shares = parseInt(splitShares[memberId]) || 0
+  if (totalShares.value === 0) return '0.00'
+  return (shares * parseFloat(getShareValue.value)).toFixed(2)
+}
+
+const splitSharesEvenly = () => {
+  selectedSplitMembers.value.forEach(id => {
+    splitShares[id] = 1
+  })
+}
+
 const splitPayersEvenly = () => {
   if (!amount.value || selectedPayers.value.length === 0) return
   const splitAmount = (parseFloat(amount.value) / selectedPayers.value.length).toFixed(2)
@@ -275,10 +465,25 @@ const canCreate = computed(() => {
   if (!hasBasics) return false
   if (selectedSplitMembers.value.length === 0) return false
   
+  // Validate payer amounts
   if (multiplePayersMode.value) {
-    return selectedPayers.value.length > 0 && Math.abs(payerTotal.value - parseFloat(amount.value)) < 0.01
+    if (selectedPayers.value.length === 0) return false
+    if (Math.abs(payerTotal.value - parseFloat(amount.value)) >= 0.01) return false
+  } else if (selectedPayers.value.length !== 1) {
+    return false
   }
-  return selectedPayers.value.length === 1
+
+  // Validate split type specific requirements
+  switch (splitType.value) {
+    case 'exact':
+      return Math.abs(exactTotal.value - parseFloat(amount.value)) < 0.01
+    case 'percentage':
+      return percentageTotal.value === 100
+    case 'shares':
+      return totalShares.value > 0
+    default: // equal
+      return true
+  }
 })
 
 const handleCreate = async () => {
@@ -292,13 +497,42 @@ const handleCreate = async () => {
       ? selectedPayers.value.map(id => ({ user: resolveUserId(id), amount: parseFloat(payerAmounts[id]) }))
       : [{ user: resolveUserId(selectedPayers.value[0]), amount: parseFloat(amount.value) }]
 
-    const splitAmong = selectedSplitMembers.value.map(id => resolveUserId(id))
+    // Build splitAmong based on split type (backend expects different formats)
+    let splitAmong
+    const totalAmount = parseFloat(amount.value)
+    
+    switch (splitType.value) {
+      case 'exact':
+        // Backend expects: [{ user, amount }]
+        splitAmong = selectedSplitMembers.value.map(id => ({
+          user: resolveUserId(id),
+          amount: parseFloat(splitExactAmounts[id]) || 0
+        }))
+        break
+      case 'percentage':
+        // Backend expects: [{ user, percentage }]
+        splitAmong = selectedSplitMembers.value.map(id => ({
+          user: resolveUserId(id),
+          percentage: parseFloat(splitPercentages[id]) || 0
+        }))
+        break
+      case 'shares':
+        // Backend expects: [{ user, shares }]
+        splitAmong = selectedSplitMembers.value.map(id => ({
+          user: resolveUserId(id),
+          shares: parseInt(splitShares[id]) || 0
+        }))
+        break
+      default: // equal
+        // Backend expects: array of user IDs
+        splitAmong = selectedSplitMembers.value.map(id => resolveUserId(id))
+    }
 
     const expenseData = {
       description: description.value,
-      amount: parseFloat(amount.value),
+      amount: totalAmount,
       groupId: props.group?._id,
-      splitType: 'equal',
+      splitType: splitType.value,
       paidBy,
       splitAmong
     }
@@ -524,6 +758,104 @@ const handleCreate = async () => {
 
   &__preview {
     @apply mt-3 text-sm text-primary-600 font-medium;
+  }
+}
+
+// Split Type Selector
+.split-type {
+  @apply mt-4 pt-4 border-t border-secondary-200;
+
+  &__label {
+    @apply block text-sm font-medium text-secondary-700 mb-2;
+  }
+
+  &__options {
+    @apply flex gap-2;
+  }
+
+  &__btn {
+    @apply flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-all;
+    @apply bg-secondary-100 text-secondary-600;
+    @apply hover:bg-secondary-200;
+
+    &--active {
+      @apply bg-primary-600 text-white;
+    }
+  }
+}
+
+// Split Values (Exact, Percentage, Shares)
+.split-values {
+  @apply mt-4 pt-4 border-t border-secondary-200;
+
+  &__header {
+    @apply flex items-center justify-between mb-3;
+  }
+
+  &__label {
+    @apply text-sm font-medium text-secondary-700;
+  }
+
+  &__even {
+    @apply text-sm text-primary-600 font-medium hover:text-primary-700;
+  }
+
+  &__list {
+    @apply space-y-2;
+  }
+
+  &__warning {
+    @apply mt-3 text-sm text-warning-600 font-medium;
+  }
+
+  &__total {
+    @apply mt-3 text-sm text-secondary-600;
+  }
+}
+
+.split-value-item {
+  @apply flex items-center justify-between gap-3 p-3 bg-secondary-50 rounded-xl;
+
+  &__info {
+    @apply flex items-center gap-2 flex-1;
+  }
+
+  &__avatar {
+    @apply w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-sm font-semibold;
+  }
+
+  &__name {
+    @apply text-sm font-medium text-secondary-700;
+  }
+
+  &__input {
+    @apply flex items-center bg-white border border-secondary-200 rounded-lg overflow-hidden;
+  }
+
+  &__symbol {
+    @apply px-2 py-1.5 text-sm text-secondary-500 bg-secondary-50;
+
+    &--right {
+      @apply bg-white;
+    }
+  }
+
+  &__field {
+    @apply w-20 px-2 py-1.5 text-sm text-secondary-800 outline-none;
+
+    &--short {
+      @apply w-14 text-right;
+    }
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+
+  &__preview {
+    @apply text-sm font-medium text-primary-600 min-w-[60px] text-right;
   }
 }
 

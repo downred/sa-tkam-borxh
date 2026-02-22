@@ -264,8 +264,10 @@ describe("API", () => {
             sort: jest.fn().mockResolvedValue(mockUsers),
           });
 
-          // When requesting all users
-          const response = await request(app).get("/api/users");
+          // When requesting all users (with auth)
+          const response = await request(app)
+            .get("/api/users")
+            .set("Authorization", "Bearer " + validToken);
 
           // Then it should return the users array
           expect(response.status).toBe(200);
@@ -278,12 +280,14 @@ describe("API", () => {
       describe("when user does not exist", () => {
         it("should return 404 status", async () => {
           // Given the user is not found
-          User.findById = jest.fn().mockResolvedValue(null);
+          User.findById = jest.fn()
+            .mockResolvedValueOnce(mockUser) // For auth middleware
+            .mockResolvedValueOnce(null);    // For getUserById
 
-          // When requesting the non-existent user
-          const response = await request(app).get(
-            "/api/users/507f1f77bcf86cd799439011"
-          );
+          // When requesting the non-existent user (with auth)
+          const response = await request(app)
+            .get("/api/users/507f1f77bcf86cd799439011")
+            .set("Authorization", "Bearer " + validToken);
 
           // Then it should return not found
           expect(response.status).toBe(404);

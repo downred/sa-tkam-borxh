@@ -431,10 +431,8 @@ Given('I am on the create expense page', async ({ page }) => {
     name: 'Roommates',
     type: 'Home',
     members: [
-      { _id: mockUserId, name: 'You', email: 'john@example.com' },
       { _id: 'user-john', name: 'John', email: 'johnmember@example.com' },
-      { _id: 'user-jane', name: 'Jane', email: 'jane@example.com' },
-      { _id: 'user-mike', name: 'Mike', email: 'mike@example.com' }
+      { _id: 'user-jane', name: 'Jane', email: 'jane@example.com' }
     ],
     createdBy: mockUserId
   };
@@ -545,6 +543,65 @@ Then('I should see split amounts displayed', async ({ page }) => {
   // Check that split amounts section is visible
   await expect(page.locator('.split-amounts')).toBeVisible();
 });
+
+// Split Type step definitions
+Then('I should see the split type selector', async ({ page }) => {
+  await expect(page.locator('.split-type')).toBeVisible();
+});
+
+Then('split type {string} should be active', async ({ page }, splitType) => {
+  await expect(page.locator(`.split-type__btn--active:has-text("${splitType}")`)).toBeVisible();
+});
+
+When('I click on split type {string}', async ({ page }, splitType) => {
+  await page.click(`.split-type__btn:has-text("${splitType}")`);
+});
+
+Then('I should see exact amount inputs for each participant', async ({ page }) => {
+  await expect(page.locator('.split-values .split-value-item')).toHaveCount(2);
+});
+
+Then('I should see percentage inputs for each participant', async ({ page }) => {
+  await expect(page.locator('.split-values .split-value-item')).toHaveCount(2);
+});
+
+Then('I should see shares inputs for each participant', async ({ page }) => {
+  await expect(page.locator('.split-values .split-value-item')).toHaveCount(2);
+});
+
+When('I enter {string} in exact amount for {string}', async ({ page }, amount, name) => {
+  const row = page.locator(`.split-value-item:has-text("${name}")`);
+  await row.locator('.split-value-item__field').fill(amount);
+});
+
+When('I enter {string} in percentage for {string}', async ({ page }, percentage, name) => {
+  const row = page.locator(`.split-value-item:has-text("${name}")`);
+  await row.locator('.split-value-item__field').fill(percentage);
+});
+
+When('I enter {string} in shares for {string}', async ({ page }, shares, name) => {
+  const row = page.locator(`.split-value-item:has-text("${name}")`);
+  await row.locator('.split-value-item__field').fill(shares);
+});
+
+Then('I should see {string} message', async ({ page }, message) => {
+  await expect(page.locator(`text=${message}`)).toBeVisible();
+});
+
+Then('I should see {string} calculated for {string}', async ({ page }, amount, name) => {
+  const row = page.locator(`.split-value-item:has-text("${name}")`);
+  await expect(row.locator(`.split-value-item__preview:has-text("${amount}")`)).toBeVisible();
+});
+
+When('I click the Split Evenly button for exact', async ({ page }) => {
+  await page.click('.split-values__even:has-text("Split evenly")');
+});
+
+Then('I should see {string} in exact amount for {string}', async ({ page }, amount, name) => {
+  const row = page.locator(`.split-value-item:has-text("${name}")`);
+  await expect(row.locator('.split-value-item__field')).toHaveValue(amount);
+});
+
 // API Mocking steps for authentication
 Given('the API will return a successful registration response', async ({ page }) => {
   await page.route('**/api/auth/register', async (route) => {

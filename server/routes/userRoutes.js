@@ -3,12 +3,12 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const auth = require('../middleware/auth');
 
-
-router.get('/users', userController.getAllUsers);
-router.get('/users/:id', userController.getUserById);
-router.post('/users', userController.createUser);
-router.put('/users/:id', userController.updateUser);
-router.delete('/users/:id', userController.deleteUser);
+// All user routes require authentication
+router.get('/users', auth, userController.getAllUsers);
+router.get('/users/:id', auth, userController.getUserById);
+router.post('/users', auth, userController.createUser);
+router.put('/users/:id', auth, userController.updateUser);
+router.delete('/users/:id', auth, userController.deleteUser);
 
 // Friend routes (protected)
 router.get('/friends', auth, userController.getFriends);
