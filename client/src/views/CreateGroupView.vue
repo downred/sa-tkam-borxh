@@ -1,6 +1,9 @@
 <template>
   <div class="create-group-page">
     <div class="create-group-header">
+      <button class="back-btn" @click="goBack">
+        <ArrowLeft class="w-5 h-5" />
+      </button>
       <h1 class="header-title">{{ step === 'create' ? 'New Group' : 'Add Members' }}</h1>
     </div>
 
@@ -24,6 +27,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ArrowLeft } from 'lucide-vue-next'
 import CreateGroup from '../components/CreateGroup.vue'
 import AddGroupMembers from '../components/AddGroupMembers.vue'
 import { useGroupsStore } from '../stores/groups'
@@ -32,6 +36,15 @@ const router = useRouter()
 const groupsStore = useGroupsStore()
 const step = ref('create')
 const createdGroupId = ref(null)
+
+const goBack = () => {
+  if (step.value === 'members') {
+    // If on members step, go back to create step
+    step.value = 'create'
+  } else {
+    router.back()
+  }
+}
 
 const handleCreated = async (data) => {
   try {
@@ -94,15 +107,20 @@ const handleFinish = async (members) => {
 }
 
 .create-group-header {
-  @apply px-6 pt-12 pb-8 text-center;
+  @apply px-6 pt-12 pb-8 flex items-center gap-4;
 
   @media (min-width: 768px) {
     @apply pt-16;
   }
 }
 
+.back-btn {
+  @apply w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center;
+  @apply hover:bg-white/30 transition-colors;
+}
+
 .header-title {
-  @apply text-2xl font-bold text-white;
+  @apply text-2xl font-bold text-white flex-1;
 
   @media (min-width: 768px) {
     @apply text-3xl;

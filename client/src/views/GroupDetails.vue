@@ -255,6 +255,43 @@
           <p v-else class="expenses-empty">No expenses yet</p>
         </div>
 
+        <!-- Activity Log Section -->
+        <div class="section">
+          <div class="section-header">
+            <Receipt class="w-5 h-5 text-secondary-500" />
+            <h3 class="section-title">Activity Log</h3>
+            <span v-if="activities.length > 0" class="section-count">{{ activities.length }}</span>
+          </div>
+
+          <!-- Activities Loading -->
+          <div v-if="activitiesLoading" class="activities-loading">
+            <Loader2 class="w-5 h-5 animate-spin text-primary-500" />
+          </div>
+
+          <!-- Activities List -->
+          <div v-else-if="activities.length > 0" class="activities-list">
+            <div 
+              v-for="activity in activities" 
+              :key="activity._id" 
+              class="activity-item"
+            >
+              <div class="activity-item__icon" :class="`activity-item__icon--${activity.type?.split('_')[0]}`">
+                <component :is="getActivityIcon(activity.type)" class="w-4 h-4" />
+              </div>
+              <div class="activity-item__info">
+                <p class="activity-item__desc">
+                  <span class="font-medium">{{ activity.user?.name || 'Someone' }}</span>
+                  {{ activity.description }}
+                </p>
+                <p class="activity-item__meta">{{ formatActivityTime(activity.createdAt) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- No Activities -->
+          <p v-else class="activities-empty">No activity yet</p>
+        </div>
+
         <!-- Add Expense Button -->
         <button class="btn-add-expense" @click="addExpense">
           <Plus class="w-5 h-5" />
@@ -352,6 +389,7 @@ import { useAuthStore } from '../stores/auth'
 import { groupService } from '../services/groupService'
 import { settlementService } from '../services/settlementService'
 import { expenseService } from '../services/expenseService'
+import { activityService } from '../services/activityService'
 
 const route = useRoute()
 const router = useRouter()
@@ -371,6 +409,10 @@ const simplifiedDebtsLoading = ref(false)
 
 // Settlements state
 const settlements = ref([])
+
+// Activities state
+const activities = ref([])
+const activitiesLoading = ref(false)
 
 // Edit/Delete state
 const editingSettlement = ref(null)
@@ -661,11 +703,47 @@ const fetchSimplifiedDebts = async () => {
   }
 }
 
+const fetchActivities = async () => {
+  activitiesLoading.value = true
+  try {
+    const data = await activityService.getGroupActivities(route.params.id, { limit: 20 })
+    activities.value = data
+  } catch (err) {
+    console.error('Failed to load activities:', err)
+    activities.value = []
+  } finally {
+    activitiesLoading.value = false
+  }
+}
+
+const formatActivityTime = (date) => {
+  if (!date) return ''
+  const now = new Date()
+  const activityDate = new Date(date)
+  const diffMs = now - activityDate
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  return activityDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
+const getActivityIcon = (type) => {
+  if (type?.includes('expense')) return Receipt
+  if (type?.includes('settlement')) return Banknote
+  return Receipt
+}
+
 const loadGroup = async () => {
   await groupsStore.fetchGroup(route.params.id)
   await expensesStore.fetchGroupExpenses(route.params.id)
   await fetchSettlements()
   fetchSimplifiedDebts()
+  fetchActivities()
 }
 
 onMounted(() => {
@@ -855,6 +933,51 @@ onMounted(() => {
 }
 
 .expenses-empty {
+  @apply mt-3 text-sm text-secondary-400 text-center py-4;
+}
+
+// Activities
+.activities-loading {
+  @apply flex justify-center py-4;
+}
+
+.activities-list {
+  @apply mt-3 space-y-2;
+}
+
+.activity-item {
+  @apply flex items-start gap-3 p-3 bg-secondary-50 rounded-lg;
+
+  &__icon {
+    @apply w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0;
+
+    &--expense {
+      @apply bg-blue-100 text-blue-600;
+    }
+
+    &--settlement {
+      @apply bg-green-100 text-green-600;
+    }
+
+    &--member {
+      @apply bg-purple-100 text-purple-600;
+    }
+  }
+
+  &__info {
+    @apply flex-1 min-w-0;
+  }
+
+  &__desc {
+    @apply text-sm text-secondary-700;
+  }
+
+  &__meta {
+    @apply text-xs text-secondary-400 mt-0.5;
+  }
+}
+
+.activities-empty {
   @apply mt-3 text-sm text-secondary-400 text-center py-4;
 }
 
