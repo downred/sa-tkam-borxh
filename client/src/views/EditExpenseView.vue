@@ -60,13 +60,13 @@
         <div class="section">
           <div class="section-header">
             <label class="section-label">Paid by</label>
-            <button 
+            <!-- <button 
               type="button" 
               class="section-toggle"
-              @click="multiplePayersMode = !multiplePayersMode"
-            >
+              >
               {{ multiplePayersMode ? 'Single payer' : 'Multiple payers' }}
-            </button>
+              <!-- @click="multiplePayersMode = !multiplePayersMode" -->
+            <!-- </button> --> 
           </div>
           <div class="member-options">
             <button

@@ -47,13 +47,13 @@
     <div class="paid-by">
       <div class="paid-by__header">
         <label class="paid-by__label">Paid by</label>
-        <button 
+        <!-- <button 
           type="button" 
           class="paid-by__toggle"
-          @click="multiplePayersMode = !multiplePayersMode"
-        >
-          {{ multiplePayersMode ? 'Single payer' : 'Multiple payers' }}
-        </button>
+          >
+          {{ multiplePayersMode ? 'Single payer' : 'Multiple payers' }} -->
+          <!-- @click="multiplePayersMode = !multiplePayersMode" -->
+        <!-- </button> -->
       </div>
       <div class="paid-by__options">
         <button
