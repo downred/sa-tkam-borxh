@@ -1,6 +1,6 @@
 <template>
   <div class="edit-expense-page">
-    <!-- Header -->
+    
     <div class="edit-header">
       <button class="back-btn" @click="goBack">
         <ArrowLeft class="w-5 h-5" />
@@ -11,23 +11,23 @@
       </div>
     </div>
 
-    <!-- Content Card -->
+    
     <div class="edit-card">
-      <!-- Loading State -->
+      
       <div v-if="loading" class="edit-loading">
         <Loader2 class="w-8 h-8 animate-spin text-primary-500" />
       </div>
 
-      <!-- Error State -->
+      
       <div v-else-if="loadError" class="edit-error">
         <AlertCircle class="w-12 h-12 text-red-400 mb-3" />
         <p class="text-secondary-600 font-medium">{{ loadError }}</p>
         <button class="btn-retry" @click="loadData">Try Again</button>
       </div>
 
-      <!-- Edit Form -->
+      
       <form v-else @submit.prevent="submitEdit" class="edit-form">
-        <!-- Description -->
+        
         <div class="form-group">
           <label class="form-label">Description</label>
           <input
@@ -39,7 +39,7 @@
           />
         </div>
 
-        <!-- Amount -->
+        
         <div class="form-group">
           <label class="form-label">Amount (€)</label>
           <div class="amount-wrapper">
@@ -56,17 +56,12 @@
           </div>
         </div>
 
-        <!-- Paid By -->
+        
         <div class="section">
           <div class="section-header">
             <label class="section-label">Paid by</label>
-            <!-- <button 
-              type="button" 
-              class="section-toggle"
-              >
-              {{ multiplePayersMode ? 'Single payer' : 'Multiple payers' }}
-              <!-- @click="multiplePayersMode = !multiplePayersMode" -->
-            <!-- </button> --> 
+            
+             
           </div>
           <div class="member-options">
             <button
@@ -84,7 +79,7 @@
             </button>
           </div>
 
-          <!-- Split Amounts (when multiple payers) -->
+          
           <div v-if="multiplePayersMode && selectedPayers.length > 0" class="split-amounts">
             <div class="split-amounts__header">
               <span class="split-amounts__label">Amount per person</span>
@@ -127,7 +122,7 @@
           </div>
         </div>
 
-        <!-- Split Among -->
+        
         <div class="section">
           <div class="section-header">
             <label class="section-label">Split among</label>
@@ -149,7 +144,7 @@
             </button>
           </div>
 
-          <!-- Split Type Selector -->
+          
           <div class="split-type">
             <label class="split-type__label">Split type</label>
             <div class="split-type__options">
@@ -166,12 +161,12 @@
             </div>
           </div>
 
-          <!-- Equal Split Preview -->
+          
           <p v-if="splitType === 'equal' && selectedSplitMembers.length > 0 && form.amount" class="split-preview">
             €{{ splitPreviewAmount }} per person (equal split)
           </p>
 
-          <!-- Exact Amounts -->
+          
           <div v-if="splitType === 'exact' && selectedSplitMembers.length > 0" class="split-values">
             <div class="split-values__header">
               <span class="split-values__label">Exact amounts</span>
@@ -203,7 +198,7 @@
             </p>
           </div>
 
-          <!-- Percentage Split -->
+          
           <div v-if="splitType === 'percentage' && selectedSplitMembers.length > 0" class="split-values">
             <div class="split-values__header">
               <span class="split-values__label">Percentage per person</span>
@@ -237,7 +232,7 @@
             </p>
           </div>
 
-          <!-- Shares Split -->
+          
           <div v-if="splitType === 'shares' && selectedSplitMembers.length > 0" class="split-values">
             <div class="split-values__header">
               <span class="split-values__label">Shares per person</span>
@@ -271,13 +266,13 @@
           </div>
         </div>
 
-        <!-- Error -->
+        
         <div v-if="submitError" class="submit-error">
           <AlertCircle class="w-4 h-4" />
           {{ submitError }}
         </div>
 
-        <!-- Actions -->
+        
         <div class="form-actions">
           <button type="button" class="btn-cancel" @click="goBack">Cancel</button>
           <button type="submit" class="btn-submit" :disabled="submitting || !canSubmit">
@@ -315,12 +310,10 @@ const form = reactive({
   amount: 0
 })
 
-// Payer state
 const multiplePayersMode = ref(false)
 const selectedPayers = ref([])
 const payerAmounts = reactive({})
 
-// Split state
 const selectedSplitMembers = ref([])
 const splitType = ref('equal')
 const splitExactAmounts = reactive({})
@@ -334,7 +327,6 @@ const splitTypes = [
   { value: 'shares', label: 'Shares' }
 ]
 
-// Group members normalized
 const groupMembers = computed(() => {
   if (!group.value?.members) return []
   return group.value.members.map(member => {
@@ -346,13 +338,11 @@ const groupMembers = computed(() => {
   })
 })
 
-// Helpers
 const getMemberName = (memberId) => {
   const member = groupMembers.value.find(m => m.id === memberId)
   return member?.name || 'Unknown'
 }
 
-// GCD function for calculating share ratios
 const gcdFunc = (a, b) => {
   a = Math.abs(a)
   b = Math.abs(b)
@@ -378,7 +368,7 @@ const togglePayer = (memberId) => {
       payerAmounts[memberId] = 0
     }
   } else {
-    // Single payer mode
+    
     selectedPayers.value = [memberId]
     payerAmounts[memberId] = form.amount
   }
@@ -399,7 +389,7 @@ const splitPayersEvenly = () => {
   selectedPayers.value.forEach(id => {
     payerAmounts[id] = perPerson
   })
-  // Adjust first for rounding
+  
   const total = selectedPayers.value.reduce((sum, id) => sum + (payerAmounts[id] || 0), 0)
   if (Math.abs(total - form.amount) > 0.001 && selectedPayers.value.length > 0) {
     payerAmounts[selectedPayers.value[0]] = Math.round((payerAmounts[selectedPayers.value[0]] + form.amount - total) * 100) / 100
@@ -415,7 +405,6 @@ const splitPreviewAmount = computed(() => {
   return (form.amount / selectedSplitMembers.value.length).toFixed(2)
 })
 
-// Exact split
 const exactTotal = computed(() => {
   return selectedSplitMembers.value.reduce((sum, id) => {
     return sum + (parseFloat(splitExactAmounts[id]) || 0)
@@ -430,7 +419,6 @@ const splitExactEvenly = () => {
   })
 }
 
-// Percentage split
 const percentageTotal = computed(() => {
   return selectedSplitMembers.value.reduce((sum, id) => {
     return sum + (parseFloat(splitPercentages[id]) || 0)
@@ -452,7 +440,6 @@ const splitPercentageEvenly = () => {
   })
 }
 
-// Shares split
 const totalShares = computed(() => {
   return selectedSplitMembers.value.reduce((sum, id) => {
     return sum + (parseInt(splitShares[id]) || 0)
@@ -482,7 +469,7 @@ const canSubmit = computed(() => {
   if (selectedSplitMembers.value.length === 0) return false
   if (multiplePayersMode.value && Math.abs(payerTotal.value - form.amount) > 0.01) return false
   
-  // Validate split type specific requirements
+  
   switch (splitType.value) {
     case 'exact':
       return Math.abs(exactTotal.value - form.amount) < 0.01
@@ -490,12 +477,11 @@ const canSubmit = computed(() => {
       return percentageTotal.value === 100
     case 'shares':
       return totalShares.value > 0
-    default: // equal
+    default: 
       return true
   }
 })
 
-// Watch for amount changes in single payer mode
 watch(() => form.amount, (newAmount) => {
   if (!multiplePayersMode.value && selectedPayers.value.length === 1) {
     payerAmounts[selectedPayers.value[0]] = newAmount
@@ -524,20 +510,20 @@ const loadData = async () => {
       return
     }
 
-    // Load group first if needed
+    
     if (groupId) {
       await groupsStore.fetchGroup(groupId)
     }
 
-    // Load expense
+    
     const expenseData = await expenseService.getById(expenseId)
     expense.value = expenseData
 
-    // Populate form
+    
     form.description = expenseData.description || ''
     form.amount = expenseData.amount || 0
 
-    // Populate payers
+    
     if (expenseData.paidBy && expenseData.paidBy.length > 0) {
       multiplePayersMode.value = expenseData.paidBy.length > 1
       selectedPayers.value = expenseData.paidBy.map(p => p.user?._id || p.user)
@@ -547,35 +533,35 @@ const loadData = async () => {
       })
     }
 
-    // Populate split members and type
+    
     if (expenseData.splits && expenseData.splits.length > 0) {
       selectedSplitMembers.value = expenseData.splits.map(s => s.user?._id || s.user)
       
-      // Set split type from expense data
+      
       splitType.value = expenseData.splitType || 'equal'
       
-      // Populate split values based on type
+      
       expenseData.splits.forEach(s => {
         const userId = s.user?._id || s.user
         
         if (expenseData.splitType === 'exact') {
           splitExactAmounts[userId] = s.amount
         } else if (expenseData.splitType === 'percentage') {
-          // Calculate percentage from amount: (amount / total) * 100
+          
           const percentage = expenseData.amount > 0 
             ? Math.round((s.amount / expenseData.amount) * 100)
             : 0
           splitPercentages[userId] = percentage
         } else if (expenseData.splitType === 'shares') {
-          // Calculate shares from amount: Find relative shares
-          // Use GCD-based approach or simple ratio
-          splitExactAmounts[userId] = s.amount // Store amounts temporarily
+          
+          
+          splitExactAmounts[userId] = s.amount 
         }
       })
       
-      // For shares, calculate actual share values after all amounts are loaded
+      
       if (expenseData.splitType === 'shares') {
-        // Find GCD of all amounts to get share ratios
+        
         const amounts = expenseData.splits.map(s => Math.round(s.amount * 100))
         const gcd = amounts.reduce((a, b) => gcdFunc(a, b))
         
@@ -585,7 +571,7 @@ const loadData = async () => {
           splitShares[userId] = shareValue
         })
         
-        // Clear temporary exact amounts
+        
         Object.keys(splitExactAmounts).forEach(key => delete splitExactAmounts[key])
       }
     }
@@ -605,13 +591,13 @@ const submitEdit = async () => {
   try {
     const expenseId = route.query.id
 
-    // Build paidBy
+    
     const paidBy = selectedPayers.value.map(userId => ({
       user: userId,
       amount: multiplePayersMode.value ? (payerAmounts[userId] || 0) : form.amount
     }))
 
-    // Build splits with calculated amounts (backend expects splits with amounts)
+    
     let splits = []
     
     switch (splitType.value) {
@@ -635,13 +621,13 @@ const submitEdit = async () => {
         }))
         break
       }
-      default: { // equal
+      default: { 
         const splitAmount = Math.round((form.amount / selectedSplitMembers.value.length) * 100) / 100
         splits = selectedSplitMembers.value.map((userId, i) => ({
           user: userId,
           amount: splitAmount
         }))
-        // Adjust for rounding errors
+        
         const splitTotal = splits.reduce((sum, s) => sum + s.amount, 0)
         if (Math.abs(splitTotal - form.amount) > 0.001 && splits.length > 0) {
           splits[0].amount = Math.round((splits[0].amount + form.amount - splitTotal) * 100) / 100
@@ -675,7 +661,6 @@ onMounted(() => {
   @apply min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex flex-col;
 }
 
-// Header
 .edit-header {
   @apply px-6 pt-12 pb-8 flex items-center gap-4;
 
@@ -701,7 +686,6 @@ onMounted(() => {
   @apply text-white/70 text-sm mt-0.5;
 }
 
-// Card
 .edit-card {
   @apply flex-1 bg-secondary-50 rounded-t-3xl p-6 overflow-y-auto;
 }
@@ -716,7 +700,6 @@ onMounted(() => {
   @apply hover:bg-primary-600 transition-colors;
 }
 
-// Form
 .edit-form {
   @apply space-y-6;
 }
@@ -749,7 +732,6 @@ onMounted(() => {
   @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
 }
 
-// Section
 .section {
   @apply bg-white rounded-xl p-4;
 }
@@ -770,7 +752,6 @@ onMounted(() => {
   @apply text-xs text-secondary-500;
 }
 
-// Member Options
 .member-options {
   @apply flex flex-wrap gap-2;
 }
@@ -793,7 +774,6 @@ onMounted(() => {
   }
 }
 
-// Split Amounts
 .split-amounts {
   @apply mt-4 pt-4 border-t border-secondary-100;
 
@@ -848,12 +828,10 @@ onMounted(() => {
   }
 }
 
-// Split Preview
 .split-preview {
   @apply mt-3 text-sm text-secondary-500;
 }
 
-// Split Type Selector
 .split-type {
   @apply mt-4 pt-4 border-t border-secondary-100;
 
@@ -876,7 +854,6 @@ onMounted(() => {
   }
 }
 
-// Split Values (Exact, Percentage, Shares)
 .split-values {
   @apply mt-4 pt-4 border-t border-secondary-100;
 
@@ -951,12 +928,10 @@ onMounted(() => {
   }
 }
 
-// Error
 .submit-error {
   @apply flex items-center gap-2 p-3 bg-red-50 text-red-600 rounded-lg text-sm;
 }
 
-// Actions
 .form-actions {
   @apply flex gap-3 pt-4;
 }

@@ -2,27 +2,25 @@ const User = require("../../../server/models/User");
 const Group = require("../../../server/models/Group");
 const Expense = require("../../../server/models/Expense");
 const Settlement = require("../../../server/models/Settlement");
+const Activity = require("../../../server/models/Activity");
 const bcrypt = require("bcryptjs");
 
-// Mock all models and dependencies
 jest.mock("../../../server/models/User");
 jest.mock("../../../server/models/Group");
 jest.mock("../../../server/models/Expense");
 jest.mock("../../../server/models/Settlement");
+jest.mock("../../../server/models/Activity");
 jest.mock("bcryptjs");
 
-// Mock jsonwebtoken from server's node_modules
 const jwt = require("../../../server/node_modules/jsonwebtoken");
 jest.mock("../../../server/node_modules/jsonwebtoken");
 
-// Import controllers after mocking
 const authController = require("../../../server/controllers/authController");
 const userController = require("../../../server/controllers/userController");
 const groupController = require("../../../server/controllers/groupController");
 const expenseController = require("../../../server/controllers/expenseController");
 const settlementController = require("../../../server/controllers/settlementController");
 
-// Helper to create mock request/response
 const mockRequest = (body = {}, params = {}, user = null, query = {}) => ({
   body,
   params,
@@ -43,9 +41,9 @@ describe("Controllers", () => {
     process.env.JWT_SECRET = "test-secret-key";
   });
 
-  // ───────────────────────────────────────────────
-  // Auth Controller Tests
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("AuthController", () => {
     describe("register", () => {
       it("should return 400 when required fields are missing", async () => {
@@ -76,6 +74,57 @@ describe("Controllers", () => {
         });
       });
 
+      
+      it("should return 400 when email has no domain (EC3)", async () => {
+        const req = mockRequest({
+          name: "Test User",
+          email: "user@",
+          password: "password123",
+        });
+        const res = mockResponse();
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Please provide a valid email address",
+        });
+      });
+
+      
+      it("should return 400 when email is empty string (EC4)", async () => {
+        const req = mockRequest({
+          name: "Test User",
+          email: "",
+          password: "password123",
+        });
+        const res = mockResponse();
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Please provide name, email and password",
+        });
+      });
+
+      
+      it("should return 400 when email contains spaces (EC5)", async () => {
+        const req = mockRequest({
+          name: "Test User",
+          email: "user @example.com",
+          password: "password123",
+        });
+        const res = mockResponse();
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Please provide a valid email address",
+        });
+      });
+
       it("should return 400 when password is too short", async () => {
         const req = mockRequest({
           name: "Test User",
@@ -89,6 +138,66 @@ describe("Controllers", () => {
         expect(res.status).toHaveBeenCalledWith(400);
         expect(res.json).toHaveBeenCalledWith({
           error: "Password must be at least 6 characters",
+        });
+      });
+
+      
+      it("should return 400 when password is empty string (EC8)", async () => {
+        const req = mockRequest({
+          name: "Test User",
+          email: "test@example.com",
+          password: "",
+        });
+        const res = mockResponse();
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Please provide name, email and password",
+        });
+      });
+
+      
+      it("should register successfully when passwords match (EC9)", async () => {
+        const req = mockRequest({
+          name: "Test User",
+          email: "test@example.com",
+          password: "password123",
+          confirmPassword: "password123",
+        });
+        const res = mockResponse();
+
+        User.findOne.mockResolvedValue(null);
+        bcrypt.genSalt.mockResolvedValue("salt");
+        bcrypt.hash.mockResolvedValue("hashedPassword");
+        User.create.mockResolvedValue({
+          _id: "123",
+          name: "Test User",
+          email: "test@example.com",
+        });
+        jwt.sign.mockReturnValue("token");
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+
+      
+      it("should return 400 when passwords do not match (EC10)", async () => {
+        const req = mockRequest({
+          name: "Test User",
+          email: "test@example.com",
+          password: "password123",
+          confirmPassword: "different123",
+        });
+        const res = mockResponse();
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Passwords do not match",
         });
       });
 
@@ -213,23 +322,23 @@ describe("Controllers", () => {
           phone: "1234567890",
         };
 
-        // Create a mock query object that returns the user
+        
         const mockQuery = {
           select: jest.fn().mockResolvedValue(mockUserWithPassword),
         };
         User.findOne = jest.fn().mockReturnValue(mockQuery);
         
-        // Setup bcrypt to return true for password match
+        
         bcrypt.compare = jest.fn().mockResolvedValue(true);
         
-        // Setup jwt to return a token
+        
         jwt.sign = jest.fn().mockReturnValue("test-token");
 
         await authController.login(req, res);
 
-        // Verify User.findOne was called with email
+        
         expect(User.findOne).toHaveBeenCalledWith({ email: "test@example.com" });
-        // Check response contains success and token
+        
         expect(res.json).toHaveBeenCalled();
       });
     });
@@ -257,9 +366,9 @@ describe("Controllers", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // User Controller Tests
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("UserController", () => {
     describe("getAllUsers", () => {
       it("should return all users sorted by creation date", async () => {
@@ -429,9 +538,9 @@ describe("Controllers", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // Settlement Controller Tests
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("SettlementController", () => {
     describe("getGroupSettlements", () => {
       it("should return settlements for a group", async () => {
@@ -493,7 +602,7 @@ describe("Controllers", () => {
       it("should return 403 when user is not a group member", async () => {
         Group.findById.mockResolvedValue({
           _id: "g1",
-          members: ["u2", "u3"], // u1 not included
+          members: ["u2", "u3"], 
         });
 
         const req = mockRequest(
@@ -591,7 +700,7 @@ describe("Controllers", () => {
       it("should return 403 when non-recipient tries to delete", async () => {
         Settlement.findById.mockResolvedValue({
           _id: "s1",
-          to: "u2", // Different user (recipient is u2, not u1)
+          to: "u2", 
         });
 
         const req = mockRequest({}, { id: "s1" }, { _id: "u1" });
@@ -608,13 +717,13 @@ describe("Controllers", () => {
       it("should delete settlement when recipient deletes", async () => {
         const mockSettlement = {
           _id: "s1",
-          to: "u1", // Recipient is u1
+          to: "u1", 
           from: { name: "Alice", email: "alice@test.com" },
           group: "g1",
           amount: 50,
           deleteOne: jest.fn().mockResolvedValue(true),
           populate: jest.fn().mockImplementation(function() {
-            // Mock populate to set from/to with name property
+            
             this.from = { name: "Alice", email: "alice@test.com" };
             this.to = { name: "Bob", email: "bob@test.com" };
             return Promise.resolve(this);
@@ -635,9 +744,9 @@ describe("Controllers", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // Expense Controller Tests
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("ExpenseController", () => {
     describe("getGroupExpenses", () => {
       it("should return expenses for a group", async () => {
@@ -726,7 +835,7 @@ describe("Controllers", () => {
       it("should return 403 when user is not a group member", async () => {
         Group.findById.mockResolvedValue({
           _id: "g1",
-          members: ["u2", "u3"], // u1 not included
+          members: ["u2", "u3"], 
         });
 
         const req = mockRequest(
@@ -760,7 +869,7 @@ describe("Controllers", () => {
             description: "Dinner",
             amount: 100,
             groupId: "g1",
-            paidBy: [{ user: "u1", amount: 50 }], // Only 50 of 100
+            paidBy: [{ user: "u1", amount: 50 }], 
           },
           {},
           { _id: "u1" }
@@ -772,6 +881,74 @@ describe("Controllers", () => {
         expect(res.status).toHaveBeenCalledWith(400);
         expect(res.json).toHaveBeenCalledWith({
           error: "Paid amounts must sum to the total expense amount",
+        });
+      });
+
+      
+      it("should return 400 when amount is zero (EC12)", async () => {
+        const req = mockRequest(
+          { description: "Dinner", amount: 0, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Amount must be greater than 0",
+        });
+      });
+
+      
+      it("should return 400 when amount is negative (EC13)", async () => {
+        const req = mockRequest(
+          { description: "Dinner", amount: -25, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Amount must be greater than 0",
+        });
+      });
+
+      
+      it("should return 400 when amount is non-numeric text (EC14)", async () => {
+        const req = mockRequest(
+          { description: "Dinner", amount: "abc", groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Amount must be a valid number",
+        });
+      });
+
+      
+      it("should return 400 when amount is empty string (EC15)", async () => {
+        const req = mockRequest(
+          { description: "Dinner", amount: "", groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Amount is required",
         });
       });
     });
@@ -791,9 +968,9 @@ describe("Controllers", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // Group Controller Tests
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("GroupController", () => {
     describe("getTotalBalance", () => {
       it("should calculate total balance across all user's groups", async () => {
@@ -804,8 +981,8 @@ describe("Controllers", () => {
 
         Group.find.mockResolvedValue(mockGroups);
 
-        // Mock expenses for group1: user is owed 50
-        // Mock expenses for group2: user owes 30
+        
+        
         Expense.find = jest
           .fn()
           .mockResolvedValueOnce([
@@ -831,7 +1008,7 @@ describe("Controllers", () => {
         expect(res.json).toHaveBeenCalledWith({
           success: true,
           data: {
-            balance: 20, // (100-50) + (20-50) = 20
+            balance: 20, 
             isOwed: true,
             isOwing: false,
           },
@@ -861,7 +1038,7 @@ describe("Controllers", () => {
 
         Group.find.mockResolvedValue(mockGroups);
 
-        // User paid 30, owes 100 = balance -70
+        
         Expense.find.mockResolvedValue([
           {
             paidBy: [{ user: "userId", amount: 30 }],
@@ -891,7 +1068,7 @@ describe("Controllers", () => {
 
         Group.find.mockResolvedValue(mockGroups);
 
-        // User paid 100, owes 50 = +50
+        
         Expense.find.mockResolvedValue([
           {
             paidBy: [{ user: "userId", amount: 100 }],
@@ -899,7 +1076,7 @@ describe("Controllers", () => {
           },
         ]);
 
-        // User sent 20 to someone (from = userId means +20 to balance)
+        
         Settlement.find.mockResolvedValue([
           {
             from: "userId",
@@ -913,7 +1090,7 @@ describe("Controllers", () => {
 
         await groupController.getTotalBalance(req, res);
 
-        // 50 (from expenses) + 20 (from settlement) = 70
+        
         expect(res.json).toHaveBeenCalledWith({
           success: true,
           data: {
@@ -934,6 +1111,587 @@ describe("Controllers", () => {
 
         expect(res.status).toHaveBeenCalledWith(500);
         expect(res.json).toHaveBeenCalledWith({ error: "Database error" });
+      });
+    });
+
+    
+    describe("createGroup", () => {
+      const validGroupBody = {
+        name: "Shpenzime Pushimesh",
+        type: "Trip",
+        members: [],
+      };
+
+      const mockCreatedGroup = {
+        _id: "g1",
+        name: "Shpenzime Pushimesh",
+        type: "Trip",
+        members: ["u1"],
+        populate: jest.fn().mockResolvedValue({
+          _id: "g1",
+          name: "Shpenzime Pushimesh",
+          type: "Trip",
+          members: [{ _id: "u1", name: "Alice" }],
+        }),
+      };
+
+      
+      it("should create group when name and type are valid (EC19)", async () => {
+        Group.create.mockResolvedValue(mockCreatedGroup);
+
+        const req = mockRequest(validGroupBody, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+
+      
+      it("should return 400 when group name is empty string (EC20)", async () => {
+        const req = mockRequest({ ...validGroupBody, name: "" }, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Group name is required",
+        });
+      });
+
+      
+      it("should return 400 when group name is whitespace only (EC21)", async () => {
+        const req = mockRequest({ ...validGroupBody, name: "   " }, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Group name is required",
+        });
+      });
+
+      
+      it("should create group with type Trip (EC22)", async () => {
+        Group.create.mockResolvedValue(mockCreatedGroup);
+
+        const req = mockRequest({ ...validGroupBody, type: "Trip" }, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+
+      
+      it("should create group with type Home (EC23)", async () => {
+        const homeGroup = {
+          ...mockCreatedGroup,
+          type: "Home",
+          populate: jest.fn().mockResolvedValue({
+            _id: "g1",
+            name: "Shpenzime Pushimesh",
+            type: "Home",
+            members: [{ _id: "u1", name: "Alice" }],
+          }),
+        };
+        Group.create.mockResolvedValue(homeGroup);
+
+        const req = mockRequest({ ...validGroupBody, type: "Home" }, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+
+      
+      it("should return 400 when group type is invalid (EC24)", async () => {
+        const req = mockRequest(
+          { ...validGroupBody, type: "InvalidType" },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Invalid group type",
+        });
+      });
+
+      it("should return 400 when group type is null (EC24 - null)", async () => {
+        const req = mockRequest(
+          { ...validGroupBody, type: null },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Invalid group type",
+        });
+      });
+
+      
+      it("should return 400 for empty group name - 0 chars (BV12)", async () => {
+        const req = mockRequest({ ...validGroupBody, name: "" }, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+      });
+
+      
+      it("should create group with 1-char name (BV13)", async () => {
+        Group.create.mockResolvedValue({
+          ...mockCreatedGroup,
+          name: "A",
+          populate: jest.fn().mockResolvedValue({ _id: "g1", name: "A", members: [] }),
+        });
+
+        const req = mockRequest({ ...validGroupBody, name: "A" }, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+
+      
+      it("should create group with 2-char name (BV14)", async () => {
+        Group.create.mockResolvedValue({
+          ...mockCreatedGroup,
+          name: "AB",
+          populate: jest.fn().mockResolvedValue({ _id: "g1", name: "AB", members: [] }),
+        });
+
+        const req = mockRequest({ ...validGroupBody, name: "AB" }, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+
+      
+      it("should create group with 49-char name (BV15)", async () => {
+        const name49 = "A".repeat(49);
+        Group.create.mockResolvedValue({
+          ...mockCreatedGroup,
+          name: name49,
+          populate: jest.fn().mockResolvedValue({ _id: "g1", name: name49, members: [] }),
+        });
+
+        const req = mockRequest({ ...validGroupBody, name: name49 }, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+
+      
+      it("should create group with 50-char name (BV16 - max boundary)", async () => {
+        const name50 = "A".repeat(50);
+        Group.create.mockResolvedValue({
+          ...mockCreatedGroup,
+          name: name50,
+          populate: jest.fn().mockResolvedValue({ _id: "g1", name: name50, members: [] }),
+        });
+
+        const req = mockRequest({ ...validGroupBody, name: name50 }, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+
+      
+      it("should return 400 for group name with 51 chars (BV17 - above max)", async () => {
+        const name51 = "A".repeat(51);
+        const req = mockRequest({ ...validGroupBody, name: name51 }, {}, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.createGroup(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Group name cannot exceed 50 characters",
+        });
+      });
+    });
+
+    
+    describe("addMember", () => {
+      const makeGroupWithMembers = (count) => ({
+        _id: "g1",
+        members: Array.from({ length: count }, (_, i) => `user${i}`),
+        save: jest.fn().mockResolvedValue(true),
+        populate: jest.fn().mockReturnThis(),
+      });
+
+      
+      it("should add member when group has 1 existing member (BV19)", async () => {
+        const group = makeGroupWithMembers(1);
+        Group.findById.mockResolvedValue(group);
+
+        const req = mockRequest({ userId: "newUser" }, { id: "g1" }, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.addMember(req, res);
+
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({ success: true })
+        );
+      });
+
+      
+      it("should add member when group has 2 existing members (BV20)", async () => {
+        const group = makeGroupWithMembers(2);
+        Group.findById.mockResolvedValue(group);
+
+        const req = mockRequest({ userId: "newUser" }, { id: "g1" }, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.addMember(req, res);
+
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({ success: true })
+        );
+      });
+
+      
+      it("should add member when group has 49 members (BV21)", async () => {
+        const group = makeGroupWithMembers(49);
+        Group.findById.mockResolvedValue(group);
+
+        const req = mockRequest({ userId: "newUser" }, { id: "g1" }, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.addMember(req, res);
+
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({ success: true })
+        );
+      });
+
+      
+      it("should return 400 when group already has 50 members (BV22)", async () => {
+        const group = makeGroupWithMembers(50);
+        Group.findById.mockResolvedValue(group);
+
+        const req = mockRequest({ userId: "newUser" }, { id: "g1" }, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.addMember(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Group has reached the maximum of 50 members",
+        });
+      });
+
+      
+      it("should return 400 when group has 51 members (BV23)", async () => {
+        const group = makeGroupWithMembers(51);
+        Group.findById.mockResolvedValue(group);
+
+        const req = mockRequest({ userId: "newUser" }, { id: "g1" }, { _id: "u1" });
+        const res = mockResponse();
+
+        await groupController.addMember(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Group has reached the maximum of 50 members",
+        });
+      });
+    });
+  });
+
+  
+  describe("ExpenseController - additional EC & BV", () => {
+    describe("createExpense - description validation", () => {
+      
+      it("should pass description validation with a valid description (EC16)", async () => {
+        
+        Group.findById.mockResolvedValue(null);
+
+        const req = mockRequest(
+          { description: "Dreka në restorant", amount: 30, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.json).toHaveBeenCalledWith({ error: "Group not found" });
+      });
+
+      
+      it("should return 400 when description is empty string (EC17)", async () => {
+        const req = mockRequest(
+          { description: "", amount: 30, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Description is required",
+        });
+      });
+
+      
+      it("should return 400 when description is whitespace only (EC18)", async () => {
+        const req = mockRequest(
+          { description: "   ", amount: 30, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Description is required",
+        });
+      });
+    });
+
+    describe("createExpense - amount boundary values", () => {
+      
+      it("should return 400 for amount -1 (BV6)", async () => {
+        const req = mockRequest(
+          { description: "Test", amount: -1, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Amount must be greater than 0",
+        });
+      });
+
+      
+      it("should return 400 for amount 0 (BV7)", async () => {
+        const req = mockRequest(
+          { description: "Test", amount: 0, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Amount must be greater than 0",
+        });
+      });
+
+      
+      it("should pass amount validation for 0.01 (BV8 - minimum valid)", async () => {
+        Group.findById.mockResolvedValue(null);
+
+        const req = mockRequest(
+          { description: "Test", amount: 0.01, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.json).toHaveBeenCalledWith({ error: "Group not found" });
+      });
+
+      
+      it("should pass amount validation for 1 (BV9)", async () => {
+        Group.findById.mockResolvedValue(null);
+
+        const req = mockRequest(
+          { description: "Test", amount: 1, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.json).toHaveBeenCalledWith({ error: "Group not found" });
+      });
+
+      
+      it("should pass amount validation for 9999.99 (BV10)", async () => {
+        Group.findById.mockResolvedValue(null);
+
+        const req = mockRequest(
+          { description: "Test", amount: 9999.99, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.json).toHaveBeenCalledWith({ error: "Group not found" });
+      });
+
+      
+      it("should pass amount validation for 10000 (BV11)", async () => {
+        Group.findById.mockResolvedValue(null);
+
+        const req = mockRequest(
+          { description: "Test", amount: 10000, groupId: "g1", paidBy: [] },
+          {},
+          { _id: "u1" }
+        );
+        const res = mockResponse();
+
+        await expenseController.createExpense(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.json).toHaveBeenCalledWith({ error: "Group not found" });
+      });
+    });
+  });
+
+  
+  describe("AuthController - password length BVA", () => {
+    describe("register - password boundary values", () => {
+      
+      it("should return 400 for password with 4 chars (BV1)", async () => {
+        const req = mockRequest({
+          name: "Test",
+          email: "test@example.com",
+          password: "pass",
+        });
+        const res = mockResponse();
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Password must be at least 6 characters",
+        });
+      });
+
+      
+      it("should return 400 for password with 5 chars (BV2)", async () => {
+        const req = mockRequest({
+          name: "Test",
+          email: "test@example.com",
+          password: "passw",
+        });
+        const res = mockResponse();
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+          error: "Password must be at least 6 characters",
+        });
+      });
+
+      
+      it("should accept password with exactly 6 chars (BV3 - min boundary)", async () => {
+        User.findOne.mockResolvedValue(null);
+        bcrypt.genSalt.mockResolvedValue("salt");
+        bcrypt.hash.mockResolvedValue("hashed");
+        User.create.mockResolvedValue({ _id: "u1", name: "Test", email: "test@example.com" });
+        jwt.sign.mockReturnValue("token");
+
+        const req = mockRequest({
+          name: "Test",
+          email: "test@example.com",
+          password: "passwo",
+        });
+        const res = mockResponse();
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+
+      
+      it("should accept password with 7 chars (BV4)", async () => {
+        User.findOne.mockResolvedValue(null);
+        bcrypt.genSalt.mockResolvedValue("salt");
+        bcrypt.hash.mockResolvedValue("hashed");
+        User.create.mockResolvedValue({ _id: "u1", name: "Test", email: "test@example.com" });
+        jwt.sign.mockReturnValue("token");
+
+        const req = mockRequest({
+          name: "Test",
+          email: "test@example.com",
+          password: "passwor",
+        });
+        const res = mockResponse();
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+
+      
+      it("should accept password with 8 chars (BV5)", async () => {
+        User.findOne.mockResolvedValue(null);
+        bcrypt.genSalt.mockResolvedValue("salt");
+        bcrypt.hash.mockResolvedValue("hashed");
+        User.create.mockResolvedValue({ _id: "u1", name: "Test", email: "test@example.com" });
+        jwt.sign.mockReturnValue("token");
+
+        const req = mockRequest({
+          name: "Test",
+          email: "test@example.com",
+          password: "password",
+        });
+        const res = mockResponse();
+
+        await authController.register(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+      });
+    });
+  });
+
+  
+  describe("UserController - addFriend email validation", () => {
+    
+    it("should return 400 when friend email has invalid format (EC28)", async () => {
+      const req = mockRequest({ email: "not-an-email" }, {}, { id: "u1" });
+      const res = mockResponse();
+
+      await userController.addFriend(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: "Please provide a valid email address",
       });
     });
   });

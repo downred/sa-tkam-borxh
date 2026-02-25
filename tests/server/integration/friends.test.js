@@ -62,9 +62,9 @@ describe("Friends API", () => {
     describe("when authenticated with valid email", () => {
       it("should add the friend successfully", async () => {
         User.findById = jest.fn()
-          .mockResolvedValueOnce(mockUser) // auth middleware
-          .mockResolvedValueOnce({ ...mockUser, friends: [], save: jest.fn().mockResolvedValue(true) }); // user lookup
-        User.findOne = jest.fn().mockResolvedValueOnce(mockFriend); // friend lookup by email
+          .mockResolvedValueOnce(mockUser) 
+          .mockResolvedValueOnce({ ...mockUser, friends: [], save: jest.fn().mockResolvedValue(true) }); 
+        User.findOne = jest.fn().mockResolvedValueOnce(mockFriend); 
 
         const response = await request(app)
           .post("/api/friends")
@@ -93,7 +93,7 @@ describe("Friends API", () => {
     describe("when trying to add yourself as friend", () => {
       it("should return 400 error", async () => {
         User.findById = jest.fn().mockResolvedValue(mockUser);
-        User.findOne = jest.fn().mockResolvedValueOnce(mockUser); // returns self
+        User.findOne = jest.fn().mockResolvedValueOnce(mockUser); 
 
         const response = await request(app)
           .post("/api/friends")
@@ -107,8 +107,8 @@ describe("Friends API", () => {
 
     describe("when email does not exist", () => {
       it("should return 404 error", async () => {
-        User.findById = jest.fn().mockResolvedValueOnce(mockUser); // auth middleware
-        User.findOne = jest.fn().mockResolvedValueOnce(null); // email not found
+        User.findById = jest.fn().mockResolvedValueOnce(mockUser); 
+        User.findOne = jest.fn().mockResolvedValueOnce(null); 
 
         const response = await request(app)
           .post("/api/friends")
@@ -129,9 +129,9 @@ describe("Friends API", () => {
         };
 
         User.findById = jest.fn()
-          .mockResolvedValueOnce(mockUser) // auth middleware
-          .mockResolvedValueOnce(userWithFriend); // user already has friend
-        User.findOne = jest.fn().mockResolvedValueOnce(mockFriend); // friend exists
+          .mockResolvedValueOnce(mockUser) 
+          .mockResolvedValueOnce(userWithFriend); 
+        User.findOne = jest.fn().mockResolvedValueOnce(mockFriend); 
 
         const response = await request(app)
           .post("/api/friends")
@@ -165,8 +165,8 @@ describe("Friends API", () => {
         };
 
         User.findById = jest.fn()
-          .mockResolvedValueOnce(mockUser) // auth middleware
-          .mockResolvedValueOnce(userWithFriend); // user lookup
+          .mockResolvedValueOnce(mockUser) 
+          .mockResolvedValueOnce(userWithFriend); 
 
         const response = await request(app)
           .delete(`/api/friends/${mockFriend._id}`)
@@ -185,8 +185,8 @@ describe("Friends API", () => {
         };
 
         User.findById = jest.fn()
-          .mockResolvedValueOnce(mockUser) // auth middleware
-          .mockResolvedValueOnce(userWithoutFriend); // user lookup
+          .mockResolvedValueOnce(mockUser) 
+          .mockResolvedValueOnce(userWithoutFriend); 
 
         const response = await request(app)
           .delete(`/api/friends/${mockFriend._id}`)
@@ -219,7 +219,7 @@ describe("Friends API", () => {
         };
 
         User.findById = jest.fn()
-          .mockResolvedValueOnce(mockUser) // auth middleware
+          .mockResolvedValueOnce(mockUser) 
           .mockReturnValueOnce({
             populate: jest.fn().mockResolvedValue(populatedUser),
           });
@@ -243,7 +243,7 @@ describe("Friends API", () => {
         };
 
         User.findById = jest.fn()
-          .mockResolvedValueOnce(mockUser) // auth middleware
+          .mockResolvedValueOnce(mockUser) 
           .mockReturnValueOnce({
             populate: jest.fn().mockResolvedValue(userNoFriends),
           });
@@ -270,7 +270,7 @@ describe("Friends API", () => {
     describe("when user not found", () => {
       it("should return 404 error", async () => {
         User.findById = jest.fn()
-          .mockResolvedValueOnce(mockUser) // auth middleware
+          .mockResolvedValueOnce(mockUser) 
           .mockReturnValueOnce({
             populate: jest.fn().mockResolvedValue(null),
           });

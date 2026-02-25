@@ -73,6 +73,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/groups/:id/add-members',
+    name: 'AddGroupMembers',
+    component: () => import('../views/AddGroupMembersView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/groups/:id/settle-up',
     name: 'SettleUpSelect',
     component: () => import('../views/SettleUpSelect.vue'),
@@ -91,15 +97,14 @@ const router = createRouter({
   routes
 })
 
-// Navigation guard for protected routes
 router.beforeEach((to, from, next) => {
   const isAuthenticated = localStorage.getItem('token')
   
-  // Redirect to login if route requires auth and user is not authenticated
+  
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login')
   } 
-  // Redirect to groups if route is guest-only and user is already authenticated
+  
   else if (to.meta.guestOnly && isAuthenticated) {
     next('/groups')
   } 

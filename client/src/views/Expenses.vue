@@ -1,12 +1,12 @@
 <template>
   <div class="expenses-page">
-    <!-- Header with total owed -->
+    
     <div class="expenses-header">
       <p class="header-label">You are owed</p>
       <h1 class="header-amount">€{{ totalOwed.toFixed(2) }}</h1>
     </div>
 
-    <!-- Expenses List -->
+    
     <div class="expenses-card">
       <h2 class="expenses-title">Recent Expenses</h2>
       
@@ -43,7 +43,6 @@ import {
   Film 
 } from 'lucide-vue-next'
 
-// Hardcoded expenses for now
 const expenses = [
   { id: 1, name: 'Groceries', owedAmount: 24.50, icon: ShoppingCart },
   { id: 2, name: 'Dinner at Mario\'s', owedAmount: 18.75, icon: Utensils },
@@ -63,7 +62,6 @@ const totalOwed = computed(() => {
   @apply min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex flex-col;
 }
 
-// Header
 .expenses-header {
   @apply px-6 pt-12 pb-8 text-center;
 
@@ -84,7 +82,6 @@ const totalOwed = computed(() => {
   }
 }
 
-// Card
 .expenses-card {
   @apply flex-1 bg-white rounded-t-3xl px-6 pt-6 pb-6;
 
@@ -97,12 +94,10 @@ const totalOwed = computed(() => {
   @apply text-lg font-semibold text-secondary-800 mb-4;
 }
 
-// List
 .expenses-list {
   @apply space-y-3;
 }
 
-// Item
 .expense-item {
   @apply flex items-center gap-4 p-4 bg-secondary-50 rounded-xl transition-all;
   @apply hover:bg-secondary-100;

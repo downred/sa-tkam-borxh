@@ -2,7 +2,6 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '30d'
@@ -11,7 +10,7 @@ const generateToken = (id) => {
 
 exports.register = async (req, res) => {
   try {
-      const { name, email, password, phone } = req.body;
+      const { name, email, password, confirmPassword, phone } = req.body;
       
     if (!name || !email || !password) {
       return res.status(400).json({ 
@@ -19,7 +18,14 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Validate email format
+    
+    if (confirmPassword !== undefined && password !== confirmPassword) {
+      return res.status(400).json({ 
+        error: 'Passwords do not match' 
+      });
+    }
+
+    
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ 
@@ -27,7 +33,7 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Validate password length 
+    
     if (password.length < 6) {
       return res.status(400).json({ 
         error: 'Password must be at least 6 characters' 

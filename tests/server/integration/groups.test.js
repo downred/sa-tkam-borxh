@@ -54,7 +54,7 @@ describe("Groups API", () => {
   });
 
   beforeEach(() => {
-    // Setup auth mock - user lookup for auth middleware
+    
     User.findById = jest.fn().mockResolvedValue(mockUser);
   });
 
@@ -121,7 +121,7 @@ describe("Groups API", () => {
           }),
         });
         
-        // Mock expenses - user paid 100, owes 50 = balance +50
+        
         Expense.find = jest.fn().mockResolvedValue([
           {
             paidBy: [{ user: mockUser._id, amount: 100 }],
@@ -151,14 +151,14 @@ describe("Groups API", () => {
         const group2Id = "507f1f77bcf86cd799439013";
         const userId = mockUser._id;
 
-        // Mock groups - getTotalBalance doesn't use populate/sort
+        
         Group.find = jest.fn().mockResolvedValue([
           { _id: group1Id, name: "Group 1" },
           { _id: group2Id, name: "Group 2" },
         ]);
 
-        // Mock expenses for group 1: user is owed 50
-        // User paid 100, owes 50 = balance +50
+        
+        
         Expense.find = jest
           .fn()
           .mockResolvedValueOnce([
@@ -167,8 +167,8 @@ describe("Groups API", () => {
               splits: [{ user: userId, amount: 50 }],
             },
           ])
-          // Mock expenses for group 2: user owes 30
-          // User paid 20, owes 50 = balance -30
+          
+          
           .mockResolvedValueOnce([
             {
               paidBy: [{ user: userId, amount: 20 }],
@@ -176,7 +176,7 @@ describe("Groups API", () => {
             },
           ]);
 
-        // Mock no settlements
+        
         Settlement.find = jest.fn().mockResolvedValue([]);
 
         const response = await request(app)
@@ -185,7 +185,7 @@ describe("Groups API", () => {
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data.balance).toBe(20); // 50 - 30 = 20
+        expect(response.body.data.balance).toBe(20); 
         expect(response.body.data.isOwed).toBe(true);
         expect(response.body.data.isOwing).toBe(false);
       });
@@ -214,7 +214,7 @@ describe("Groups API", () => {
 
         Group.find = jest.fn().mockResolvedValue([{ _id: groupId }]);
 
-        // User paid 30, owes 100 = balance -70
+        
         Expense.find = jest.fn().mockResolvedValue([
           {
             paidBy: [{ user: userId, amount: 30 }],
@@ -382,17 +382,18 @@ describe("Groups API", () => {
           .send({});
 
         expect(response.status).toBe(400);
-        expect(response.body.error).toBe("User ID is required");
+        expect(response.body.error).toBe("User ID or email is required");
       });
     });
 
     describe("when user is already a member", () => {
       it("should return 400 error", async () => {
+        const existingId = mockUser._id.toString();
         const groupWithMember = {
           ...mockGroup,
-          members: {
-            includes: jest.fn().mockReturnValue(true),
-          },
+          members: [{ toString: () => existingId }],
+          save: jest.fn(),
+          populate: jest.fn().mockReturnThis(),
         };
         Group.findById = jest.fn().mockResolvedValue(groupWithMember);
 
@@ -402,7 +403,7 @@ describe("Groups API", () => {
           .send({ userId: mockUser._id });
 
         expect(response.status).toBe(400);
-        expect(response.body.error).toBe("User is already a member");
+        expect(response.body.error).toContain("already a member");
       });
     });
   });
@@ -459,7 +460,7 @@ describe("Groups API", () => {
         };
         Group.findById = jest.fn().mockResolvedValue(groupWithSave);
         
-        // Member paid €50, split is €25 each -> member is owed €25
+        
         Expense.find = jest.fn().mockResolvedValue([{
           paidBy: [{ user: { toString: () => memberToRemove }, amount: 50 }],
           splits: [
@@ -491,7 +492,7 @@ describe("Groups API", () => {
         };
         Group.findById = jest.fn().mockResolvedValue(groupWithSave);
         
-        // Creator paid €50, split is €25 each -> member owes €25
+        
         Expense.find = jest.fn().mockResolvedValue([{
           paidBy: [{ user: { toString: () => mockUser._id }, amount: 50 }],
           splits: [
@@ -525,7 +526,7 @@ describe("Groups API", () => {
         };
         Group.findById = jest.fn().mockResolvedValue(groupWithSave);
         
-        // Creator paid €50, split €25 each -> member owes €25
+        
         Expense.find = jest.fn().mockResolvedValue([{
           paidBy: [{ user: { toString: () => mockUser._id }, amount: 50 }],
           splits: [
@@ -533,7 +534,7 @@ describe("Groups API", () => {
             { user: { toString: () => mockUser._id }, amount: 25 }
           ]
         }]);
-        // Settlement clears the debt: member paid €25 to creator
+        
         Settlement.find = jest.fn().mockResolvedValue([{
           from: { toString: () => memberToRemove },
           to: { toString: () => mockUser._id },

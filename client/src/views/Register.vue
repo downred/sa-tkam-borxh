@@ -1,6 +1,6 @@
 <template>
   <div class="register-page">
-    <!-- Header -->
+    
     <div class="register-header">
       <div class="register-icon">
         <CircleDollarSign class="icon" />
@@ -9,10 +9,10 @@
       <p class="register-subtitle">Start tracking your expenses today</p>
     </div>
 
-    <!-- Form Card -->
+    
     <div class="register-card">
       <form @submit.prevent="handleRegister" class="register-form" novalidate>
-        <!-- Name Field -->
+        
         <FormInput
           id="name"
           v-model="form.name"
@@ -28,7 +28,7 @@
           </template>
         </FormInput>
 
-        <!-- Email Field -->
+        
         <FormInput
           id="email"
           v-model="form.email"
@@ -44,7 +44,7 @@
           </template>
         </FormInput>
 
-        <!-- Password Field -->
+        
         <FormInput
           id="password"
           v-model="form.password"
@@ -60,7 +60,7 @@
           </template>
         </FormInput>
 
-        <!-- Confirm Password Field -->
+        
         <FormInput
           id="confirmPassword"
           v-model="form.confirmPassword"
@@ -76,18 +76,18 @@
           </template>
         </FormInput>
 
-        <!-- Terms Checkbox -->
+        
         <label class="checkbox-label">
           <input v-model="form.acceptTerms" type="checkbox" class="checkbox" />
           <span class="checkbox-text">I agree to the <a href="#" class="terms-link">Terms of Service</a> and <a href="#" class="terms-link">Privacy Policy</a></span>
         </label>
 
-        <!-- Error Message -->
+        
         <div v-if="generalError" class="error-box">
           <p class="error-box__text">{{ generalError }}</p>
         </div>
 
-        <!-- Submit Button -->
+        
         <button type="submit" :disabled="loading" class="btn-primary">
           <span v-if="!loading">Create Account</span>
           <span v-else class="btn-loading">
@@ -97,7 +97,7 @@
         </button>
       </form>
 
-      <!-- Divider -->
+      
       <div class="divider">
         <div class="divider-line"></div>
         <div class="divider-text">
@@ -105,7 +105,7 @@
         </div>
       </div>
 
-      <!-- Login Link -->
+      
       <router-link to="/login" class="btn-secondary">Sign In</router-link>
     </div>
   </div>
@@ -123,7 +123,6 @@ import { useAuthStore } from '../stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-// Form data
 const form = ref({
   name: '',
   email: '',
@@ -132,7 +131,6 @@ const form = ref({
   acceptTerms: false
 })
 
-// Validation config
 const validationConfig = {
   name: [
     'required',
@@ -146,7 +144,6 @@ const validationConfig = {
   confirmPassword: ['required']
 }
 
-// Setup validation with the composable
 const { fields, validate, touch, touchAll } = useFormValidation(
   form,
   validationConfig,
@@ -157,7 +154,6 @@ const loading = ref(false)
 const generalError = ref('')
 const passwordMismatch = ref(false)
 
-// Check password match when confirmPassword changes
 watch(() => form.value.confirmPassword, () => {
   if (fields.value.confirmPassword?.isTouched && form.value.confirmPassword) {
     passwordMismatch.value = form.value.password !== form.value.confirmPassword
@@ -175,12 +171,12 @@ const handleRegister = async () => {
   touchAll()
   const result = validate()
   
-  // Check password match manually
+  
   passwordMismatch.value = form.value.password !== form.value.confirmPassword
   
   if (!result.isValid || passwordMismatch.value) return
 
-  // Check terms acceptance
+  
   if (!form.value.acceptTerms) {
     generalError.value = 'You must accept the Terms of Service and Privacy Policy'
     return
@@ -196,11 +192,11 @@ const handleRegister = async () => {
       password: form.value.password
     })
 
-    // Store user data and token
+    
     authStore.setUser(response.data)
     authStore.setToken(response.data.token)
 
-    // Redirect to groups
+    
     router.push('/groups')
   } catch (error) {
     generalError.value = error.response?.data?.error || 'Registration failed. Please try again.'
@@ -215,7 +211,6 @@ const handleRegister = async () => {
   @apply min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex flex-col;
 }
 
-// Header
 .register-header {
   @apply px-6 pt-12 pb-8 text-center;
 
@@ -240,7 +235,6 @@ const handleRegister = async () => {
   @apply text-primary-200 mt-2;
 }
 
-// Card
 .register-card {
   @apply flex-1 bg-white rounded-t-3xl px-6 pt-8 pb-6;
 
@@ -249,17 +243,14 @@ const handleRegister = async () => {
   }
 }
 
-// Form
 .register-form {
   @apply space-y-5;
 }
 
-// Icons
 .icon {
   @apply w-8 h-8 text-white;
 }
 
-// Checkbox
 .checkbox-label {
   @apply flex items-start cursor-pointer;
 }
@@ -276,7 +267,6 @@ const handleRegister = async () => {
   @apply text-primary-600 hover:text-primary-500 underline;
 }
 
-// Error Box
 .error-box {
   @apply p-3 bg-error-50 border border-error-200 rounded-xl;
 
@@ -285,7 +275,6 @@ const handleRegister = async () => {
   }
 }
 
-// Buttons
 .btn-primary {
   @apply w-full py-3.5 px-4 bg-primary-600 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/30 transition-all;
   @apply hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
@@ -301,12 +290,10 @@ const handleRegister = async () => {
   @apply flex items-center justify-center;
 }
 
-// Spinner
 .spinner {
   @apply animate-spin -ml-1 mr-2 h-5 w-5;
 }
 
-// Divider
 .divider {
   @apply relative my-6;
 }

@@ -1,6 +1,6 @@
 <template>
   <div class="group-details-page">
-    <!-- Header -->
+    
     <div class="details-header">
       <button class="back-btn" @click="goBack">
         <ArrowLeft class="w-5 h-5" />
@@ -13,23 +13,23 @@
       </div>
     </div>
 
-    <!-- Content Card -->
+    
     <div class="details-card">
-      <!-- Loading State -->
+      
       <div v-if="loading" class="details-loading">
         <Loader2 class="w-8 h-8 animate-spin text-primary-500" />
       </div>
 
-      <!-- Error State -->
+      
       <div v-else-if="error" class="details-error">
         <AlertCircle class="w-12 h-12 text-red-400 mb-3" />
         <p class="text-secondary-600 font-medium">{{ error }}</p>
         <button class="btn-retry" @click="loadGroup">Try Again</button>
       </div>
 
-      <!-- Group Info -->
+      
       <div v-else-if="group" class="details-content">
-        <!-- Group Summary -->
+        
         <div class="group-summary">
           <div class="group-icon-large" :class="`group-icon-large--${group.type?.toLowerCase() || 'other'}`">
             <component :is="getGroupIcon(group.type)" />
@@ -38,23 +38,38 @@
           <span class="group-type-badge">{{ group.type || 'Other' }}</span>
         </div>
 
-        <!-- Participants Section -->
+        
         <div class="section">
           <div class="section-header">
             <Users class="w-5 h-5 text-secondary-500" />
             <h3 class="section-title">Participants</h3>
             <span class="section-count">{{ group.members?.length || 0 }}</span>
+            <button class="btn-add-member" @click="goToAddMembers" title="Add member">
+              <UserPlus class="w-4 h-4" />
+            </button>
+          </div>
+          <div class="members-list">
+            <div v-for="member in group.members" :key="member._id" class="member-item">
+              <div class="member-item__avatar">
+                {{ member.name?.charAt(0)?.toUpperCase() || '?' }}
+              </div>
+              <div class="member-item__info">
+                <p class="member-item__name">{{ member.name }}</p>
+                <p class="member-item__email">{{ member.email }}</p>
+              </div>
+              <span v-if="member._id === group.createdBy?._id" class="member-item__badge">Creator</span>
+            </div>
           </div>
         </div>
 
-        <!-- Balances Section -->
+        
         <div v-if="!expensesLoading && expenses.length > 0" class="section">
           <div class="section-header">
             <Wallet class="w-5 h-5 text-secondary-500" />
             <h3 class="section-title">Balances</h3>
           </div>
 
-          <!-- Overall Balance -->
+          
           <div class="balance-overall">
             <div v-if="totalOwed === 0 && totalOwe === 0" class="balance-overall__row">
               <p class="balance-overall__amount balance-overall__amount--settled">All settled up</p>
@@ -71,7 +86,7 @@
             </div>
           </div>
 
-          <!-- Per-member Balances -->
+          
           <div v-if="memberBalances.length > 0" class="balance-members">
             <div
               v-for="entry in memberBalances"
@@ -100,7 +115,7 @@
           </div>
         </div>
 
-        <!-- Suggested Settlements Section (Simplified Debts) -->
+        
         <div v-if="!expensesLoading && expenses.length > 0 && (totalOwed > 0 || totalOwe > 0)" class="section">
           <div class="section-header">
             <ArrowRight class="w-5 h-5 text-secondary-500" />
@@ -144,14 +159,14 @@
 
           <p v-else class="settlements-empty">All settled up!</p>
           
-          <!-- Settle Up Button -->
+          
           <button v-if="totalOwed > 0 || totalOwe > 0" class="btn-settle-up" @click="goToSettleUp">
             <Banknote class="w-5 h-5" />
             Settle Up
           </button>
         </div>
 
-        <!-- Settlement History Section -->
+        
         <div v-if="settlements.length > 0" class="section">
           <div class="section-header">
             <Banknote class="w-5 h-5 text-secondary-500" />
@@ -189,7 +204,7 @@
           </div>
         </div>
 
-        <!-- Expenses Section -->
+        
         <div class="section">
           <div class="section-header">
             <Receipt class="w-5 h-5 text-secondary-500" />
@@ -197,12 +212,12 @@
             <span class="section-count">{{ expenses.length }}</span>
           </div>
 
-          <!-- Expenses Loading -->
+          
           <div v-if="expensesLoading" class="expenses-loading">
             <Loader2 class="w-5 h-5 animate-spin text-primary-500" />
           </div>
 
-          <!-- Expenses List -->
+          
           <div v-else-if="expenses.length > 0" class="expenses-list">
             <div 
               v-for="expense in expenses" 
@@ -251,11 +266,11 @@
             </div>
           </div>
 
-          <!-- No Expenses -->
+          
           <p v-else class="expenses-empty">No expenses yet</p>
         </div>
 
-        <!-- Activity Log Section -->
+        
         <div class="section">
           <div class="section-header">
             <Receipt class="w-5 h-5 text-secondary-500" />
@@ -263,12 +278,12 @@
             <span v-if="activities.length > 0" class="section-count">{{ activities.length }}</span>
           </div>
 
-          <!-- Activities Loading -->
+          
           <div v-if="activitiesLoading" class="activities-loading">
             <Loader2 class="w-5 h-5 animate-spin text-primary-500" />
           </div>
 
-          <!-- Activities List -->
+          
           <div v-else-if="activities.length > 0" class="activities-list">
             <div 
               v-for="activity in activities" 
@@ -288,11 +303,11 @@
             </div>
           </div>
 
-          <!-- No Activities -->
+          
           <p v-else class="activities-empty">No activity yet</p>
         </div>
 
-        <!-- Add Expense Button -->
+        
         <button class="btn-add-expense" @click="addExpense">
           <Plus class="w-5 h-5" />
           Add New Expense
@@ -300,7 +315,7 @@
       </div>
     </div>
 
-    <!-- Edit Settlement Modal -->
+    
     <div v-if="editingSettlement" class="modal-overlay" @click.self="closeEditSettlement">
       <div class="modal-content">
         <div class="modal-header">
@@ -334,7 +349,7 @@
       </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
+    
     <div v-if="deleteConfirm.show" class="modal-overlay" @click.self="closeDeleteConfirm">
       <div class="modal-content modal-content--small">
         <div class="modal-header">
@@ -368,6 +383,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Users,
+  UserPlus,
   Plus,
   Loader2,
   AlertCircle,
@@ -403,18 +419,18 @@ const error = computed(() => groupsStore.error)
 const expenses = computed(() => expensesStore.expenses)
 const expensesLoading = computed(() => expensesStore.loading)
 
-// Simplified debts state
+const goToAddMembers = () => {
+  router.push(`/groups/${route.params.id}/add-members`)
+}
+
 const simplifiedDebts = ref({ transactions: [], transactionCount: 0, summary: '' })
 const simplifiedDebtsLoading = ref(false)
 
-// Settlements state
 const settlements = ref([])
 
-// Activities state
 const activities = ref([])
 const activitiesLoading = ref(false)
 
-// Edit/Delete state
 const editingSettlement = ref(null)
 const editSettlementAmount = ref(0)
 const editSettlementLoading = ref(false)
@@ -422,7 +438,7 @@ const editSettlementError = ref('')
 
 const deleteConfirm = ref({
   show: false,
-  type: '', // 'expense' or 'settlement'
+  type: '', 
   item: null,
   loading: false,
   error: ''
@@ -467,7 +483,6 @@ const getUserBalance = (expense) => {
   return Math.round((paid - owed) * 100) / 100
 }
 
-// Overall totals derived from per-member balances
 const totalOwed = computed(() => {
   return memberBalances.value
     .filter(e => e.balance > 0)
@@ -480,16 +495,15 @@ const totalOwe = computed(() => {
     .reduce((sum, e) => sum + Math.abs(e.balance), 0)
 })
 
-// Per-member pairwise balance computation (including settlements)
 const memberBalances = computed(() => {
   const userId = authStore.user?._id
   if (!userId) return []
 
-  const pairwise = {} // memberId -> net amount (positive = they owe me)
+  const pairwise = {} 
 
-  // Calculate balances from expenses
+  
   for (const expense of expenses.value) {
-    // Compute each person's net in this expense (paid - split)
+    
     const nets = {}
     for (const p of (expense.paidBy || [])) {
       const id = p.user?._id
@@ -500,7 +514,7 @@ const memberBalances = computed(() => {
       if (id) nets[id] = (nets[id] || 0) - s.amount
     }
 
-    // Split into creditors (lent) and debtors (borrowed)
+    
     const creditors = []
     const debtors = []
     for (const [id, net] of Object.entries(nets)) {
@@ -511,38 +525,38 @@ const memberBalances = computed(() => {
     const totalCredit = creditors.reduce((s, c) => s + c.amount, 0)
     if (totalCredit === 0) continue
 
-    // Each debtor owes each creditor proportionally
+    
     for (const debtor of debtors) {
       for (const creditor of creditors) {
         const debtAmount = debtor.amount * (creditor.amount / totalCredit)
 
         if (creditor.id === userId && debtor.id !== userId) {
-          // Someone owes me
+          
           pairwise[debtor.id] = (pairwise[debtor.id] || 0) + debtAmount
         } else if (debtor.id === userId && creditor.id !== userId) {
-          // I owe someone
+          
           pairwise[creditor.id] = (pairwise[creditor.id] || 0) - debtAmount
         }
       }
     }
   }
 
-  // Apply settlements to reduce balances
+  
   for (const settlement of settlements.value) {
     const fromId = settlement.from?._id
     const toId = settlement.to?._id
     const amount = settlement.amount || 0
 
     if (fromId === userId && toId) {
-      // I paid someone - reduces what I owe them (makes balance more positive)
+      
       pairwise[toId] = (pairwise[toId] || 0) + amount
     } else if (toId === userId && fromId) {
-      // Someone paid me - reduces what they owe me (makes balance less positive)
+      
       pairwise[fromId] = (pairwise[fromId] || 0) - amount
     }
   }
 
-  // Build member info from group members
+  
   const membersMap = {}
   if (group.value?.members) {
     for (const m of group.value.members) {
@@ -571,7 +585,6 @@ const goToSettleUp = () => {
   router.push(`/groups/${route.params.id}/settle-up`)
 }
 
-// Permission checks
 const canEditExpense = (expense) => {
   return expense.createdBy?._id === authStore.user?._id
 }
@@ -580,7 +593,6 @@ const canEditSettlement = (settlement) => {
   return settlement.to?._id === authStore.user?._id
 }
 
-// Expense edit/delete
 const editExpense = (expense) => {
   router.push({ path: '/edit-expense', query: { id: expense._id, groupId: route.params.id } })
 }
@@ -595,7 +607,6 @@ const confirmDeleteExpense = (expense) => {
   }
 }
 
-// Settlement edit/delete
 const editSettlement = (settlement) => {
   editingSettlement.value = settlement
   editSettlementAmount.value = settlement.amount
@@ -640,7 +651,6 @@ const confirmDeleteSettlement = (settlement) => {
   }
 }
 
-// Delete confirmation
 const closeDeleteConfirm = () => {
   deleteConfirm.value = {
     show: false,
@@ -756,7 +766,6 @@ onMounted(() => {
   @apply min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex flex-col;
 }
 
-// Header
 .details-header {
   @apply px-6 pt-12 pb-8 flex items-center gap-4;
 
@@ -786,7 +795,6 @@ onMounted(() => {
   @apply text-primary-200 text-sm mt-0.5;
 }
 
-// Card
 .details-card {
   @apply flex-1 bg-white rounded-t-3xl px-6 pt-6 pb-24;
 
@@ -795,12 +803,10 @@ onMounted(() => {
   }
 }
 
-// Loading
 .details-loading {
   @apply flex items-center justify-center py-20;
 }
 
-// Error
 .details-error {
   @apply flex flex-col items-center justify-center py-12 text-center;
 }
@@ -810,12 +816,10 @@ onMounted(() => {
   @apply hover:bg-primary-700 transition-colors;
 }
 
-// Content
 .details-content {
   @apply space-y-6;
 }
 
-// Group Summary
 .group-summary {
   @apply flex flex-col items-center text-center py-4;
 }
@@ -856,7 +860,6 @@ onMounted(() => {
   @apply mt-2 px-3 py-1 bg-secondary-100 text-secondary-600 text-xs font-medium rounded-full;
 }
 
-// Section
 .section {
   @apply bg-secondary-50 rounded-xl p-4;
 }
@@ -873,13 +876,44 @@ onMounted(() => {
   @apply px-2.5 py-0.5 bg-primary-100 text-primary-700 text-sm font-semibold rounded-full;
 }
 
-// Add Expense Button
+.btn-add-member {
+  @apply w-7 h-7 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center;
+  @apply hover:bg-primary-200 transition-colors;
+}
+
+.members-list {
+  @apply mt-3 space-y-2;
+}
+
+.member-item {
+  @apply flex items-center gap-3 p-2 bg-white rounded-lg;
+
+  &__avatar {
+    @apply w-9 h-9 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm flex-shrink-0;
+  }
+
+  &__info {
+    @apply flex-1 min-w-0;
+  }
+
+  &__name {
+    @apply text-sm font-medium text-secondary-800 truncate;
+  }
+
+  &__email {
+    @apply text-xs text-secondary-500 truncate;
+  }
+
+  &__badge {
+    @apply px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full flex-shrink-0;
+  }
+}
+
 .btn-add-expense {
   @apply w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary-600 text-white font-semibold rounded-xl;
   @apply hover:bg-primary-700 transition-colors shadow-lg shadow-primary-600/25;
 }
 
-// Expenses
 .expenses-loading {
   @apply flex items-center justify-center py-6;
 }
@@ -936,7 +970,6 @@ onMounted(() => {
   @apply mt-3 text-sm text-secondary-400 text-center py-4;
 }
 
-// Activities
 .activities-loading {
   @apply flex justify-center py-4;
 }
@@ -981,7 +1014,6 @@ onMounted(() => {
   @apply mt-3 text-sm text-secondary-400 text-center py-4;
 }
 
-// Balances
 .balance-overall {
   @apply mt-3 p-4 bg-white rounded-lg;
 
@@ -1042,7 +1074,6 @@ onMounted(() => {
   }
 }
 
-// Settlements (Simplified Debts)
 .settlements-loading {
   @apply mt-3 flex justify-center py-4;
 }
@@ -1091,14 +1122,12 @@ onMounted(() => {
   @apply mt-3 text-sm text-green-500 text-center py-4 font-medium;
 }
 
-// Settle Up Button
 .btn-settle-up {
   @apply w-full mt-4 py-3 bg-green-600 text-white rounded-xl font-semibold;
   @apply flex items-center justify-center gap-2;
   @apply hover:bg-green-700 transition-colors;
 }
 
-// Settlement History
 .history-list {
   @apply mt-3 space-y-2;
 }
@@ -1127,7 +1156,6 @@ onMounted(() => {
   }
 }
 
-// Item Actions
 .item-actions {
   @apply flex items-center gap-1 ml-2;
 }
@@ -1144,7 +1172,6 @@ onMounted(() => {
   }
 }
 
-// Modal Styles
 .modal-overlay {
   @apply fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4;
 }

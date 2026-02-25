@@ -39,7 +39,7 @@ const createdGroupId = ref(null)
 
 const goBack = () => {
   if (step.value === 'members') {
-    // If on members step, go back to create step
+    
     step.value = 'create'
   } else {
     router.back()
@@ -48,7 +48,7 @@ const goBack = () => {
 
 const handleCreated = async (data) => {
   try {
-    // Map frontend type values to backend enum values
+    
     const typeMap = {
       trip: 'Trip',
       home: 'Home',
@@ -63,13 +63,13 @@ const handleCreated = async (data) => {
       settleUpReminders: data.settleReminders
     }
     
-    // Add trip dates if it's a trip
+    
     if (data.type === 'trip') {
       if (data.tripStartDate) groupData.startDate = data.tripStartDate
       if (data.tripEndDate) groupData.endDate = data.tripEndDate
     }
     
-    // Add renewal date if it's a subscription
+    
     if (data.type === 'subscription' && data.renewalDate) {
       groupData.renewalDate = data.renewalDate
     }
@@ -78,7 +78,7 @@ const handleCreated = async (data) => {
     createdGroupId.value = createdGroup._id
     step.value = 'members'
   } catch (error) {
-    // Error is already set in the store
+    
     console.error('Failed to create group:', error)
   }
 }
@@ -86,13 +86,13 @@ const handleCreated = async (data) => {
 const handleFinish = async (members) => {
   if (members && createdGroupId.value) {
     try {
-      // Add selected friends to the group
+      
       if (members.selectedFriends?.length > 0) {
         for (const friendId of members.selectedFriends) {
           await groupsStore.addMember(createdGroupId.value, friendId)
         }
       }
-      // TODO: Handle addedEmails (invite by email)
+      
     } catch (error) {
       console.error('Failed to add members:', error)
     }

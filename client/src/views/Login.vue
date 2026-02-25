@@ -1,6 +1,6 @@
 <template>
   <div class="login-page">
-    <!-- Header -->
+    
     <div class="login-header">
       <div class="login-icon">
         <CircleDollarSign class="icon" />
@@ -9,10 +9,10 @@
       <p class="login-subtitle">Sign in to manage your expenses</p>
     </div>
 
-    <!-- Form Card -->
+    
     <div class="login-card">
       <form @submit.prevent="handleLogin" class="login-form" novalidate>
-        <!-- Email Field -->
+        
         <FormInput
           id="email"
           v-model="form.email"
@@ -28,7 +28,7 @@
           </template>
         </FormInput>
 
-        <!-- Password Field -->
+        
         <FormInput
           id="password"
           v-model="form.password"
@@ -44,7 +44,7 @@
           </template>
         </FormInput>
 
-        <!-- Remember Me & Forgot Password -->
+        
         <div class="form-actions">
           <label class="checkbox-label">
             <input v-model="form.rememberMe" type="checkbox" class="checkbox" />
@@ -53,12 +53,12 @@
           <router-link to="/forgot-password" class="forgot-link">Forgot password?</router-link>
         </div>
 
-        <!-- Error Message -->
+        
         <div v-if="generalError" class="error-box">
           <p class="error-box__text">{{ generalError }}</p>
         </div>
 
-        <!-- Submit Button -->
+        
         <button type="submit" :disabled="loading" class="btn-primary">
           <span v-if="!loading">Sign In</span>
           <span v-else class="btn-loading">
@@ -68,7 +68,7 @@
         </button>
       </form>
 
-      <!-- Divider -->
+      
       <div class="divider">
         <div class="divider-line"></div>
         <div class="divider-text">
@@ -76,7 +76,7 @@
         </div>
       </div>
 
-      <!-- Register Link -->
+      
       <router-link to="/register" class="btn-secondary">Create an Account</router-link>
     </div>
   </div>
@@ -94,14 +94,12 @@ import { useAuthStore } from '../stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-// Form data
 const form = ref({
   email: '',
   password: '',
   rememberMe: false
 })
 
-// Validation config
 const validationConfig = {
   email: ['required', 'email'],
   password: [
@@ -110,7 +108,6 @@ const validationConfig = {
   ]
 }
 
-// Setup validation with the composable
 const { fields, validate, touch, touchAll } = useFormValidation(
   form,
   validationConfig,
@@ -140,11 +137,11 @@ const handleLogin = async () => {
     console.log({response});
     
 
-    // Store user data and token
+    
     authStore.setUser(response.data)
     authStore.setToken(response.data.token)
 
-    // Redirect to groups
+    
     router.push('/groups')
   } catch (error) {
     console.log({error});
@@ -161,7 +158,6 @@ const handleLogin = async () => {
   @apply min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex flex-col;
 }
 
-// Header
 .login-header {
   @apply px-6 pt-12 pb-8 text-center;
 
@@ -186,7 +182,6 @@ const handleLogin = async () => {
   @apply text-primary-200 mt-2;
 }
 
-// Card
 .login-card {
   @apply flex-1 bg-white rounded-t-3xl px-6 pt-8 pb-6;
 
@@ -195,17 +190,14 @@ const handleLogin = async () => {
   }
 }
 
-// Form
 .login-form {
   @apply space-y-5;
 }
 
-// Icons
 .icon {
   @apply w-8 h-8 text-white;
 }
 
-// Form Actions
 .form-actions {
   @apply flex items-center justify-between;
 }
@@ -226,7 +218,6 @@ const handleLogin = async () => {
   @apply text-sm font-medium text-primary-600 hover:text-primary-500;
 }
 
-// Error Box
 .error-box {
   @apply p-3 bg-error-50 border border-error-200 rounded-xl;
 
@@ -235,7 +226,6 @@ const handleLogin = async () => {
   }
 }
 
-// Buttons
 .btn-primary {
   @apply w-full py-3.5 px-4 bg-primary-600 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/30 transition-all;
   @apply hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
@@ -251,12 +241,10 @@ const handleLogin = async () => {
   @apply flex items-center justify-center;
 }
 
-// Spinner
 .spinner {
   @apply animate-spin -ml-1 mr-2 h-5 w-5;
 }
 
-// Divider
 .divider {
   @apply relative my-6;
 }

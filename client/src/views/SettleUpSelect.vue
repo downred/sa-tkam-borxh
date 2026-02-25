@@ -1,6 +1,6 @@
 <template>
   <div class="settle-up-page">
-    <!-- Header -->
+    
     <div class="settle-header">
       <button class="back-btn" @click="goBack">
         <ArrowLeft class="w-5 h-5" />
@@ -11,25 +11,25 @@
       </div>
     </div>
 
-    <!-- Content Card -->
+    
     <div class="settle-card">
-      <!-- Loading State -->
+      
       <div v-if="loading" class="settle-loading">
         <Loader2 class="w-8 h-8 animate-spin text-primary-500" />
       </div>
 
-      <!-- Error State -->
+      
       <div v-else-if="error" class="settle-error">
         <AlertCircle class="w-12 h-12 text-red-400 mb-3" />
         <p class="text-secondary-600 font-medium">{{ error }}</p>
         <button class="btn-retry" @click="loadData">Try Again</button>
       </div>
 
-      <!-- Content -->
+      
       <div v-else class="settle-content">
         <p class="settle-instruction">Select a member to settle up with</p>
 
-        <!-- Members who owe you -->
+        
         <div v-if="membersOwingYou.length > 0" class="member-section">
           <h3 class="section-label section-label--positive">They owe you</h3>
           <div class="member-list">
@@ -55,7 +55,7 @@
           </div>
         </div>
 
-        <!-- Members you owe -->
+        
         <div v-if="membersYouOwe.length > 0" class="member-section">
           <h3 class="section-label section-label--negative">You owe them</h3>
           <div class="member-list">
@@ -81,7 +81,7 @@
           </div>
         </div>
 
-        <!-- No balances -->
+        
         <div v-if="membersOwingYou.length === 0 && membersYouOwe.length === 0" class="settle-empty">
           <Wallet class="w-12 h-12 text-secondary-300 mb-3" />
           <p class="settle-empty__text">All settled up!</p>
@@ -118,7 +118,6 @@ const loading = computed(() => groupsStore.loading || expensesStore.loading)
 const error = computed(() => groupsStore.error || expensesStore.error)
 const expenses = computed(() => expensesStore.expenses)
 
-// Settlements state
 const settlements = ref([])
 
 const goBack = () => {
@@ -131,19 +130,18 @@ const selectMember = (member, direction) => {
     query: { 
       amount: member.balance.toFixed(2), 
       name: member.name,
-      direction // 'receive' = they pay you, 'pay' = you pay them
+      direction 
     }
   })
 }
 
-// Calculate balances per member
 const memberBalances = computed(() => {
   const userId = authStore.user?._id
   if (!userId) return {}
 
-  const pairwise = {} // memberId -> net amount (positive = they owe me)
+  const pairwise = {} 
 
-  // Calculate from expenses
+  
   for (const expense of expenses.value) {
     const nets = {}
     for (const p of (expense.paidBy || [])) {
@@ -178,17 +176,17 @@ const memberBalances = computed(() => {
     }
   }
 
-  // Apply settlements to reduce balances
+  
   for (const settlement of settlements.value) {
     const fromId = settlement.from?._id
     const toId = settlement.to?._id
     const amount = settlement.amount || 0
 
     if (fromId === userId && toId) {
-      // I paid someone - reduces what I owe them
+      
       pairwise[toId] = (pairwise[toId] || 0) + amount
     } else if (toId === userId && fromId) {
-      // Someone paid me - reduces what they owe me
+      
       pairwise[fromId] = (pairwise[fromId] || 0) - amount
     }
   }
@@ -196,7 +194,6 @@ const memberBalances = computed(() => {
   return pairwise
 })
 
-// Members who owe you (positive balance)
 const membersOwingYou = computed(() => {
   const membersMap = {}
   if (group.value?.members) {
@@ -220,7 +217,6 @@ const membersOwingYou = computed(() => {
   return result.sort((a, b) => b.balance - a.balance)
 })
 
-// Members you owe (negative balance)
 const membersYouOwe = computed(() => {
   const membersMap = {}
   if (group.value?.members) {
@@ -270,7 +266,6 @@ onMounted(() => {
   @apply min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex flex-col;
 }
 
-// Header
 .settle-header {
   @apply px-6 pt-12 pb-8 flex items-center gap-4;
 
@@ -296,7 +291,6 @@ onMounted(() => {
   @apply text-white/70 text-sm mt-0.5;
 }
 
-// Card
 .settle-card {
   @apply flex-1 bg-secondary-50 rounded-t-3xl p-6;
 }
@@ -322,7 +316,6 @@ onMounted(() => {
   @apply text-secondary-600 text-sm mb-4;
 }
 
-// Section
 .member-section {
   @apply space-y-3;
 }
@@ -339,7 +332,6 @@ onMounted(() => {
   }
 }
 
-// Member List
 .member-list {
   @apply space-y-3;
 }
@@ -402,7 +394,6 @@ onMounted(() => {
   }
 }
 
-// Empty State
 .settle-empty {
   @apply flex flex-col items-center justify-center py-16;
 

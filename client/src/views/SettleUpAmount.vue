@@ -1,6 +1,6 @@
 <template>
   <div class="settle-amount-page">
-    <!-- Header -->
+    
     <div class="settle-header">
       <button class="back-btn" @click="goBack">
         <ArrowLeft class="w-5 h-5" />
@@ -11,16 +11,16 @@
       </div>
     </div>
 
-    <!-- Content Card -->
+    
     <div class="settle-card">
-      <!-- Loading State -->
+      
       <div v-if="loading" class="settle-loading">
         <Loader2 class="w-8 h-8 animate-spin text-primary-500" />
       </div>
 
-      <!-- Content -->
+      
       <div v-else class="settle-content">
-        <!-- Member Info -->
+        
         <div class="settle-member" :class="{ 'settle-member--pay': isPayingDirection }">
           <div class="settle-member__avatar" :class="{ 'settle-member__avatar--pay': isPayingDirection }">
             {{ memberName?.charAt(0)?.toUpperCase() || '?' }}
@@ -38,7 +38,7 @@
           </div>
         </div>
 
-        <!-- Amount Form -->
+        
         <form @submit.prevent="submitSettlement" class="settle-form">
           <div class="form-group">
             <label class="form-label">
@@ -66,13 +66,13 @@
             </p>
           </div>
 
-          <!-- Error -->
+          
           <div v-if="submitError" class="settle-submit-error">
             <AlertCircle class="w-4 h-4" />
             <span>{{ submitError }}</span>
           </div>
 
-          <!-- Submit Button -->
+          
           <button 
             type="submit" 
             class="btn-submit" 
@@ -115,7 +115,6 @@ const memberName = computed(() => route.query.name || 'Member')
 const suggestedAmount = computed(() => route.query.amount || '0.00')
 const direction = computed(() => route.query.direction || 'receive')
 
-// Direction helpers
 const isPayingDirection = computed(() => direction.value === 'pay')
 
 const amount = ref(null)
@@ -147,16 +146,16 @@ const submitSettlement = async () => {
     }
 
     if (isPayingDirection.value) {
-      // You are paying them: from = currentUser, to = member
+      
       settlementData.to = memberId.value
     } else {
-      // They are paying you: from = member, to = currentUser (implied)
+      
       settlementData.from = memberId.value
     }
 
     await settlementService.create(settlementData)
 
-    // Refresh group data and go back to group details
+    
     await groupsStore.fetchGroup(groupId.value)
     router.push(`/groups/${groupId.value}`)
   } catch (err) {
@@ -167,7 +166,7 @@ const submitSettlement = async () => {
 }
 
 onMounted(() => {
-  // Pre-fill with suggested amount
+  
   if (suggestedAmount.value) {
     amount.value = parseFloat(suggestedAmount.value)
   }
@@ -179,7 +178,6 @@ onMounted(() => {
   @apply min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex flex-col;
 }
 
-// Header
 .settle-header {
   @apply px-6 pt-12 pb-8 flex items-center gap-4;
 
@@ -205,7 +203,6 @@ onMounted(() => {
   @apply text-white/70 text-sm mt-0.5;
 }
 
-// Card
 .settle-card {
   @apply flex-1 bg-secondary-50 rounded-t-3xl p-6;
 }
@@ -218,7 +215,6 @@ onMounted(() => {
   @apply space-y-6;
 }
 
-// Member Info
 .settle-member {
   @apply flex items-center gap-4 p-4 bg-white rounded-xl border-l-4 border-green-500;
 
@@ -252,7 +248,6 @@ onMounted(() => {
   }
 }
 
-// Form
 .settle-form {
   @apply space-y-6;
 }
@@ -292,12 +287,10 @@ onMounted(() => {
   @apply text-primary-600 font-medium hover:text-primary-700 underline;
 }
 
-// Error
 .settle-submit-error {
   @apply flex items-center gap-2 p-3 bg-red-50 text-red-600 rounded-lg text-sm;
 }
 
-// Submit Button
 .btn-submit {
   @apply w-full py-4 bg-green-600 text-white rounded-xl font-semibold text-lg;
   @apply flex items-center justify-center gap-2;

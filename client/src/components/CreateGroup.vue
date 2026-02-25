@@ -2,7 +2,7 @@
   <div class="create-group">
     <h2 class="create-group__title">Create Group</h2>
 
-    <!-- Group Name -->
+    
     <FormInput
       id="groupName"
       v-model="groupName"
@@ -15,7 +15,7 @@
       </template>
     </FormInput>
 
-    <!-- Group Type -->
+    
     <div class="group-type">
       <label class="group-type__label">Group Type</label>
       <div class="group-type__options">
@@ -33,7 +33,7 @@
       </div>
     </div>
 
-    <!-- Trip Dates (only for trip type) -->
+    
     <div v-if="selectedType === 'trip'" class="trip-dates">
       <label class="trip-dates__label">Trip Dates</label>
       <div class="trip-dates__inputs">
@@ -58,7 +58,7 @@
       </div>
     </div>
 
-    <!-- Renewal Date (only for subscription type) -->
+    
     <div v-if="selectedType === 'subscription'" class="renewal-date">
       <label for="renewalDate" class="renewal-date__label">Renewal Date</label>
       <input
@@ -69,7 +69,7 @@
       />
     </div>
 
-    <!-- Group Settings (only show when type is selected) -->
+    
     <div v-if="selectedType" class="group-settings">
       <label class="group-settings__label">Settings</label>
       
@@ -110,12 +110,12 @@
       </div>
     </div>
 
-    <!-- Error Message -->
+    
     <div v-if="error" class="error-message">
       {{ error }}
     </div>
 
-    <!-- Create Button -->
+    
     <button 
       type="button" 
       class="btn-create" 
@@ -188,7 +188,6 @@ const handleCreate = () => {
   }
 }
 
-// Group Type
 .group-type {
   &__label {
     @apply block text-sm font-medium text-secondary-700 mb-3;
@@ -203,7 +202,6 @@ const handleCreate = () => {
   }
 }
 
-// Type Option
 .type-option {
   @apply flex flex-col items-center gap-2 p-4 bg-secondary-50 rounded-xl transition-all;
   @apply hover:bg-secondary-100;
@@ -230,7 +228,6 @@ const handleCreate = () => {
   }
 }
 
-// Trip Dates
 .trip-dates {
   &__label {
     @apply block text-sm font-medium text-secondary-700 mb-3;
@@ -253,21 +250,18 @@ const handleCreate = () => {
   }
 }
 
-// Renewal Date
 .renewal-date {
   &__label {
     @apply block text-sm font-medium text-secondary-700 mb-3;
   }
 }
 
-// Group Settings
 .group-settings {
   &__label {
     @apply block text-sm font-medium text-secondary-700 mb-3;
   }
 }
 
-// Toggle Option
 .toggle-option {
   @apply flex items-center justify-between p-4 bg-secondary-50 rounded-xl mb-3;
 
@@ -288,7 +282,6 @@ const handleCreate = () => {
   }
 }
 
-// Toggle Button
 .toggle-btn {
   @apply relative w-11 h-6 bg-secondary-300 rounded-full transition-colors;
   @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
@@ -306,12 +299,10 @@ const handleCreate = () => {
   }
 }
 
-// Error Message
 .error-message {
   @apply p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg;
 }
 
-// Create Button
 .btn-create {
   @apply w-full py-3.5 px-4 bg-primary-600 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/30 transition-all;
   @apply hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;

@@ -31,13 +31,13 @@ const activitySchema = new mongoose.Schema({
     required: true
   },
   metadata: {
-    // Store relevant data about the activity
-    entityId: mongoose.Schema.Types.Mixed,  // ID of expense/settlement (Mixed to support test mock IDs)
-    entityType: String,                         // 'expense' or 'settlement'
+    
+    entityId: mongoose.Schema.Types.Mixed,  
+    entityType: String,                         
     amount: Number,
-    previousAmount: Number,                     // For edits
-    description: String,                        // Expense description
-    previousDescription: String,                // For edits
+    previousAmount: Number,                     
+    description: String,                        
+    previousDescription: String,                
     involvedUsers: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
@@ -47,7 +47,6 @@ const activitySchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for efficient querying by group and time
 activitySchema.index({ group: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Activity', activitySchema);

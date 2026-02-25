@@ -43,7 +43,7 @@ describe("Users API", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Default auth mock - auth middleware calls User.findById
+    
     User.findById = jest.fn().mockResolvedValue(mockUser);
   });
 
@@ -94,8 +94,8 @@ describe("Users API", () => {
     describe("when user exists", () => {
       it("should return the user", async () => {
         User.findById = jest.fn()
-          .mockResolvedValueOnce(mockUser)  // For auth middleware
-          .mockResolvedValueOnce(mockUser); // For getUserById
+          .mockResolvedValueOnce(mockUser)  
+          .mockResolvedValueOnce(mockUser); 
 
         const response = await request(app)
           .get(`/api/users/${mockUser._id}`)
@@ -110,8 +110,8 @@ describe("Users API", () => {
     describe("when user does not exist", () => {
       it("should return 404", async () => {
         User.findById = jest.fn()
-          .mockResolvedValueOnce(mockUser)  // For auth middleware
-          .mockResolvedValueOnce(null);     // For getUserById
+          .mockResolvedValueOnce(mockUser)  
+          .mockResolvedValueOnce(null);     
 
         const response = await request(app)
           .get("/api/users/nonexistent123456")

@@ -6,14 +6,12 @@ require('dotenv').config();
 
 const app = express();
 
-
 const expenseRoutes = require('./routes/expenseRoutes');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const settlementRoutes = require('./routes/settlementRoutes');
 const activityRoutes = require('./routes/activityRoutes');
-
 
 app.use(cors({
   origin: '*',
@@ -24,31 +22,27 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/sa-tkam-borxh';
 
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('MongoDB connected successfully'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-
 app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to saTkamBorxh API' });
 });
 
-// Auth routes must come first (no auth middleware)
 app.use('/api/auth', authRoutes);
-// User routes (no global auth, individual routes protected)
-app.use('/api', userRoutes);
-// Group routes
-app.use('/api/groups', groupRoutes);
-// Expense routes (all protected by auth)
-app.use('/api', expenseRoutes);
-// Settlement routes
-app.use('/api', settlementRoutes);
-// Activity routes
-app.use('/api/activities', activityRoutes);
 
+app.use('/api', userRoutes);
+
+app.use('/api/groups', groupRoutes);
+
+app.use('/api', expenseRoutes);
+
+app.use('/api', settlementRoutes);
+
+app.use('/api/activities', activityRoutes);
 
 app.use(
   '/api/docs',
@@ -59,11 +53,9 @@ app.use(
   })
 );
 
-
 app.get('/openapi.json', (req, res) => {
   res.sendFile(__dirname + '/openapi.json');
 });
-
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

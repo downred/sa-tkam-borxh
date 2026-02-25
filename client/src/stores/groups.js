@@ -23,7 +23,7 @@ export const useGroupsStore = defineStore('groups', () => {
     try {
       const response = await groupService.getAll()
       groups.value = response.data
-      // Also fetch total balance
+      
       await fetchTotalBalance()
     } catch (err) {
       error.value = err.response?.data?.error || 'Failed to fetch groups'

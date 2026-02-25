@@ -16,7 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
         const response = await authService.getMe()
         user.value = response.data
       } catch (error) {
-        // Token is invalid, clear it
+        
         logout()
       } finally {
         loading.value = false

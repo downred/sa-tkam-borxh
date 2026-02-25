@@ -66,13 +66,13 @@ describe("Expenses API", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Auth middleware finds user
+    
     User.findById = jest.fn().mockResolvedValue(mockUser);
   });
 
-  // ───────────────────────────────────────────────
-  // GET /api/groups/:groupId/expenses
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Get Group Expenses", () => {
     describe("when expenses exist for group", () => {
       it("should return all expenses sorted by date", async () => {
@@ -168,9 +168,9 @@ describe("Expenses API", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // GET /api/expenses/:id
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Get Expense By ID", () => {
     describe("when expense exists", () => {
       it("should return the expense with populated fields", async () => {
@@ -226,9 +226,9 @@ describe("Expenses API", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // POST /api/expenses — Split Types & Validation
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Create Expense", () => {
     beforeEach(() => {
       Group.findById = jest.fn().mockResolvedValue(mockGroup);
@@ -447,9 +447,9 @@ describe("Expenses API", () => {
 
       describe("when shares split calculates correctly", () => {
         it("should split 90 with shares 2:1 as 60:30", async () => {
-          // 2 shares + 1 share = 3 total
-          // Alice: 90 * 2/3 = 60
-          // Bob: 90 * 1/3 = 30
+          
+          
+          
           const response = await request(app)
             .post("/api/expenses")
             .set("Authorization", "Bearer " + validToken)
@@ -513,8 +513,7 @@ describe("Expenses API", () => {
 
     describe("Refunds (Negative Expenses)", () => {
       describe("when creating a refund with equal split", () => {
-        it("should create expense with negative amounts", async () => {
-          // Bob refunds €60 split equally among 3 people (-€20 each)
+        it("should return 400 for negative amount (EC13)", async () => {
           const response = await request(app)
             .post("/api/expenses")
             .set("Authorization", "Bearer " + validToken)
@@ -527,15 +526,13 @@ describe("Expenses API", () => {
               splitAmong: [mockUser._id, mockUser2._id, mockUser3._id],
             });
 
-          expect(response.status).toBe(201);
-          expect(response.body.amount).toBe(-60);
-          // Each person's split should be -20
-          expect(response.body.splits[0].amount).toBe(-20);
+          expect(response.status).toBe(400);
+          expect(response.body.error).toContain("Amount must be greater than 0");
         });
       });
 
       describe("when creating a refund with exact amounts", () => {
-        it("should create expense with specified negative amounts", async () => {
+        it("should return 400 for negative amount (EC13)", async () => {
           const response = await request(app)
             .post("/api/expenses")
             .set("Authorization", "Bearer " + validToken)
@@ -551,8 +548,8 @@ describe("Expenses API", () => {
               ],
             });
 
-          expect(response.status).toBe(201);
-          expect(response.body.amount).toBe(-50);
+          expect(response.status).toBe(400);
+          expect(response.body.error).toContain("Amount must be greater than 0");
         });
       });
 
@@ -570,13 +567,12 @@ describe("Expenses API", () => {
             });
 
           expect(response.status).toBe(400);
-          expect(response.body.error).toContain("Amount cannot be zero");
+          expect(response.body.error).toContain("Amount must be greater than 0");
         });
       });
 
       describe("when refund amount sign mismatches paidBy", () => {
-        it("should fail zero-sum validation", async () => {
-          // Negative amount but positive paidBy - should fail
+        it("should return 400 for negative amount", async () => {
           const response = await request(app)
             .post("/api/expenses")
             .set("Authorization", "Bearer " + validToken)
@@ -584,12 +580,12 @@ describe("Expenses API", () => {
               description: "Bad refund",
               amount: -50,
               groupId: groupId,
-              paidBy: [{ user: mockUser._id, amount: 50 }], // Wrong sign!
+              paidBy: [{ user: mockUser._id, amount: 50 }],
               splitAmong: [mockUser._id, mockUser2._id],
             });
 
           expect(response.status).toBe(400);
-          expect(response.body.error).toContain("Paid");
+          expect(response.body.error).toContain("Amount must be greater than 0");
         });
       });
     });
@@ -733,9 +729,9 @@ describe("Expenses API", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // PUT /api/expenses/:id
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Update Expense", () => {
     describe("when creator updates expense", () => {
       it("should update successfully", async () => {
@@ -871,9 +867,9 @@ describe("Expenses API", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // DELETE /api/expenses/:id
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Delete Expense", () => {
     describe("when creator deletes expense", () => {
       it("should delete successfully and return balance impact", async () => {
@@ -905,8 +901,8 @@ describe("Expenses API", () => {
       });
 
       it("should show correct balance impact", async () => {
-        // Alice paid €100, split €50 each with Bob
-        // Balance impact: Alice loses €50 (was owed), Bob gains €50 (no longer owes)
+        
+        
         const aliceId = mockUser._id;
         const bobId = mockUser2._id;
         
@@ -931,11 +927,11 @@ describe("Expenses API", () => {
 
         expect(response.status).toBe(200);
         
-        // Alice: paid -100 + split +50 = -50 (loses €50)
+        
         const aliceImpact = response.body.balanceImpact.find(b => b.user === aliceId);
         expect(aliceImpact.change).toBe(-50);
         
-        // Bob: split +50 (no longer owes €50)
+        
         const bobImpact = response.body.balanceImpact.find(b => b.user === bobId);
         expect(bobImpact.change).toBe(50);
       });
@@ -973,9 +969,9 @@ describe("Expenses API", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // GET /api/groups/:groupId/balances
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Get Group Balances", () => {
     describe("when group has expenses and settlements", () => {
       it("should compute correct net balances", async () => {
@@ -992,7 +988,7 @@ describe("Expenses API", () => {
           populate: jest.fn().mockResolvedValue(populatedGroup),
         });
 
-        // Alice paid 90, split equally 3 ways
+        
         Expense.find = jest.fn().mockResolvedValue([
           {
             amount: 90,
@@ -1005,7 +1001,7 @@ describe("Expenses API", () => {
           },
         ]);
 
-        // Bob settled 10 with Alice
+        
         Settlement.find = jest.fn().mockResolvedValue([
           { from: mockUser2._id, to: mockUser._id, amount: 10 },
         ]);
@@ -1022,11 +1018,11 @@ describe("Expenses API", () => {
         const bob = response.body.find(function(b) { return b.user._id === mockUser2._id; });
         const charlie = response.body.find(function(b) { return b.user._id === mockUser3._id; });
 
-        // Alice: paid 90 - owed 30 - received settlement 10 = 50
+        
         expect(alice.balance).toBe(50);
-        // Bob: paid 0 - owed 30 + sent settlement 10 = -20
+        
         expect(bob.balance).toBe(-20);
-        // Charlie: paid 0 - owed 30 = -30
+        
         expect(charlie.balance).toBe(-30);
       });
     });
@@ -1135,7 +1131,7 @@ describe("Expenses API", () => {
           populate: jest.fn().mockResolvedValue(populatedGroup),
         });
 
-        // Alice paid 60, Bob paid 40, split equally 3 ways (~33.33 each)
+        
         Expense.find = jest.fn().mockResolvedValue([
           {
             amount: 99,
@@ -1166,11 +1162,11 @@ describe("Expenses API", () => {
         var bob = response.body.find(function(b) { return b.user._id === mockUser2._id; });
         var charlie = response.body.find(function(b) { return b.user._id === mockUser3._id; });
 
-        // Alice: paid 60, owed 33 => +27
+        
         expect(alice.balance).toBe(27);
-        // Bob: paid 39, owed 33 => +6
+        
         expect(bob.balance).toBe(6);
-        // Charlie: paid 0, owed 33 => -33
+        
         expect(charlie.balance).toBe(-33);
       });
     });
@@ -1185,8 +1181,8 @@ describe("Expenses API", () => {
 
     describe("Simple chain simplification", () => {
       it("should simplify A->B->C to A->C", async () => {
-        // Scenario: A owes B €50, B owes C €50
-        // After simplification: A pays C €50 (1 transaction instead of 2)
+        
+        
         const mockGroupWith3 = {
           ...mockGroup,
           members: [
@@ -1200,8 +1196,8 @@ describe("Expenses API", () => {
           populate: jest.fn().mockResolvedValue(mockGroupWith3),
         });
 
-        // Expense 1: B paid €100, split equally A/B => A owes B €50
-        // Expense 2: C paid €100, split equally B/C => B owes C €50
+        
+        
         Expense.find = jest.fn().mockResolvedValue([
           {
             paidBy: [{ user: { toString: () => mockUser2._id }, amount: 100 }],
@@ -1225,7 +1221,7 @@ describe("Expenses API", () => {
           .set("Authorization", "Bearer " + validToken);
 
         expect(response.status).toBe(200);
-        // Net: A=-50, B=0, C=+50 => A pays C €50 (1 transaction)
+        
         expect(response.body.transactionCount).toBe(1);
         expect(response.body.transactions[0].from._id).toBe(mockUser._id);
         expect(response.body.transactions[0].to._id).toBe(mockUser3._id);
@@ -1235,8 +1231,8 @@ describe("Expenses API", () => {
 
     describe("Circular debt cancellation", () => {
       it("should cancel out circular debts completely", async () => {
-        // Scenario: A owes B €30, B owes C €30, C owes A €30
-        // All circular - net balances are 0, no transactions needed
+        
+        
         const mockGroupWith3 = {
           ...mockGroup,
           members: [
@@ -1250,9 +1246,9 @@ describe("Expenses API", () => {
           populate: jest.fn().mockResolvedValue(mockGroupWith3),
         });
 
-        // A owes B €30: B paid €60, split A/B equally
-        // B owes C €30: C paid €60, split B/C equally
-        // C owes A €30: A paid €60, split A/C equally
+        
+        
+        
         Expense.find = jest.fn().mockResolvedValue([
           {
             paidBy: [{ user: { toString: () => mockUser2._id }, amount: 60 }],
@@ -1283,15 +1279,15 @@ describe("Expenses API", () => {
           .set("Authorization", "Bearer " + validToken);
 
         expect(response.status).toBe(200);
-        // All cancel out - no transactions needed
+        
         expect(response.body.transactionCount).toBe(0);
         expect(response.body.transactions).toEqual([]);
       });
 
       it("should handle partial circular debt with remainder", async () => {
-        // A owes B €50, B owes C €30, C owes A €20
-        // Net: A = -50+20 = -30, B = +50-30 = +20, C = +30-20 = +10
-        // Simplified: A pays B €20, A pays C €10 (2 transactions)
+        
+        
+        
         const mockGroupWith3 = {
           ...mockGroup,
           members: [
@@ -1337,7 +1333,7 @@ describe("Expenses API", () => {
         expect(response.status).toBe(200);
         expect(response.body.transactionCount).toBe(2);
         
-        // A (owes 30) pays B (owed 20) and C (owed 10)
+        
         const totalPaid = response.body.transactions.reduce((sum, t) => sum + t.amount, 0);
         expect(totalPaid).toBe(30);
       });
@@ -1345,8 +1341,8 @@ describe("Expenses API", () => {
 
     describe("Multiple creditors and debtors", () => {
       it("should minimize transactions with 4 people", async () => {
-        // A=-60, B=-40, C=+70, D=+30
-        // Optimal: A pays C €60, B pays C €10, B pays D €30 = 3 transactions
+        
+        
         const mockGroupWith4 = {
           ...mockGroup,
           members: [
@@ -1388,12 +1384,12 @@ describe("Expenses API", () => {
           .set("Authorization", "Bearer " + validToken);
 
         expect(response.status).toBe(200);
-        // Max n-1 transactions for n people with non-zero balance
+        
         expect(response.body.transactionCount).toBeLessThanOrEqual(3);
         
-        // Sum of all transaction amounts should conserve money
+        
         const totalTransferred = response.body.transactions.reduce((sum, t) => sum + t.amount, 0);
-        expect(totalTransferred).toBe(100); // Total debt = 60 + 40 = 100
+        expect(totalTransferred).toBe(100); 
       });
     });
 
@@ -1411,7 +1407,7 @@ describe("Expenses API", () => {
           populate: jest.fn().mockResolvedValue(mockGroupWith2),
         });
 
-        // A paid €100, split equally
+        
         Expense.find = jest.fn().mockResolvedValue([
           {
             paidBy: [{ user: { toString: () => mockUser._id }, amount: 100 }],
@@ -1421,7 +1417,7 @@ describe("Expenses API", () => {
             ],
           },
         ]);
-        // B settled with A
+        
         Settlement.find = jest.fn().mockResolvedValue([
           {
             from: { toString: () => mockUser2._id },
@@ -1460,7 +1456,7 @@ describe("Expenses API", () => {
             splitType: "exact",
             splitAmong: [
               { user: mockUser._id, amount: 40 },
-              { user: mockUser2._id, amount: 40 }, // Only 80, not 100!
+              { user: mockUser2._id, amount: 40 }, 
             ],
           });
 
@@ -1481,7 +1477,7 @@ describe("Expenses API", () => {
             description: "Bad expense",
             amount: 100,
             groupId: groupId,
-            paidBy: [{ user: mockUser._id, amount: 80 }], // Only 80, not 100!
+            paidBy: [{ user: mockUser._id, amount: 80 }], 
             splitType: "equal",
             splitAmong: [mockUser._id, mockUser2._id],
           });
@@ -1505,7 +1501,7 @@ describe("Expenses API", () => {
           populate: jest.fn().mockResolvedValue(mockGroupWith2),
         });
 
-        // Valid expense: paid = splits = amount
+        
         Expense.find = jest.fn().mockResolvedValue([
           {
             _id: "expense1",
@@ -1544,7 +1540,7 @@ describe("Expenses API", () => {
           populate: jest.fn().mockResolvedValue(mockGroupWith2),
         });
 
-        // Invalid expense: splits don't sum to amount
+        
         Expense.find = jest.fn().mockResolvedValue([
           {
             _id: "expense1",
@@ -1553,7 +1549,7 @@ describe("Expenses API", () => {
             paidBy: [{ user: { toString: () => mockUser._id }, amount: 100 }],
             splits: [
               { user: { toString: () => mockUser._id }, amount: 40 },
-              { user: { toString: () => mockUser2._id }, amount: 40 }, // Total 80, not 100
+              { user: { toString: () => mockUser2._id }, amount: 40 }, 
             ],
           },
         ]);
@@ -1582,7 +1578,7 @@ describe("Expenses API", () => {
           populate: jest.fn().mockResolvedValue(mockGroupWith2),
         });
 
-        // Alice paid €100, split equally -> Alice +50, Bob -50
+        
         Expense.find = jest.fn().mockResolvedValue([
           {
             _id: "expense1",
@@ -1595,7 +1591,7 @@ describe("Expenses API", () => {
             ],
           },
         ]);
-        // Bob paid Alice €50 -> now both at 0
+        
         Settlement.find = jest.fn().mockResolvedValue([
           {
             from: { toString: () => mockUser2._id },

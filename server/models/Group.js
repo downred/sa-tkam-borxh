@@ -11,18 +11,18 @@ const GroupSchema = new mongoose.Schema({
     enum: ['Trip', 'Home', 'Family', 'Subscription', 'Other'],
     default: 'Other'
   },
-  // Trip-specific fields
+  
   startDate: {
     type: Date
   },
   endDate: {
     type: Date
   },
-  // Subscription-specific field
+  
   renewalDate: {
     type: Date
   },
-  // Reminders
+  
   settleUpReminders: {
     type: Boolean,
     default: false

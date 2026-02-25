@@ -3,25 +3,23 @@ const Settlement = require('../models/Settlement');
 const Group = require('../models/Group');
 const { logActivity } = require('./activityController');
 
-// Zero-Sum Integrity: Verify expense paid amounts equal split amounts
 const validateExpenseZeroSum = (paidBy, splits, amount) => {
   const paidTotal = paidBy.reduce((sum, p) => sum + p.amount, 0);
   const splitTotal = splits.reduce((sum, s) => sum + s.amount, 0);
   
-  // Both should equal the expense amount
+  
   if (Math.abs(paidTotal - amount) > 0.01) {
     return { valid: false, error: `Paid total (€${paidTotal.toFixed(2)}) doesn't match expense amount (€${amount.toFixed(2)})` };
   }
   if (Math.abs(splitTotal - amount) > 0.01) {
     return { valid: false, error: `Split total (€${splitTotal.toFixed(2)}) doesn't match expense amount (€${amount.toFixed(2)})` };
   }
-  // Zero-sum: paid - split = 0 for the whole expense
+  
   if (Math.abs(paidTotal - splitTotal) > 0.01) {
     return { valid: false, error: `Zero-sum violation: paid (€${paidTotal.toFixed(2)}) != splits (€${splitTotal.toFixed(2)})` };
   }
   return { valid: true };
 };
-
 
 exports.getGroupExpenses = async (req, res) => {
   try {
@@ -35,7 +33,6 @@ exports.getGroupExpenses = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 exports.getExpenseById = async (req, res) => {
   try {
@@ -52,23 +49,28 @@ exports.getExpenseById = async (req, res) => {
   }
 };
 
-
 exports.createExpense = async (req, res) => {
   try {
     const { description, amount, groupId, category, splitType, paidBy, splitAmong } = req.body;
 
-    // Validate amount is not zero
-    if (amount === 0) {
-      return res.status(400).json({ error: 'Amount cannot be zero' });
+    
+    if (!description || description.trim() === '') {
+      return res.status(400).json({ error: 'Description is required' });
     }
 
-    // Note: Negative amounts are allowed for refunds
-    // A refund works like a reverse expense:
-    // - amount: -50 means €50 refund
-    // - paidBy amounts should also be negative (recipient of refund)
-    // - splits will be negative (reducing what participants owe)
+    
+    if (amount === undefined || amount === null || amount === '') {
+      return res.status(400).json({ error: 'Amount is required' });
+    }
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount)) {
+      return res.status(400).json({ error: 'Amount must be a valid number' });
+    }
+    if (numericAmount <= 0) {
+      return res.status(400).json({ error: 'Amount must be greater than 0' });
+    }
 
-    // Validate group exists and user is a member
+    
     const group = await Group.findById(groupId);
     if (!group) {
       return res.status(404).json({ error: 'Group not found' });
@@ -79,32 +81,32 @@ exports.createExpense = async (req, res) => {
       return res.status(403).json({ error: 'You are not a member of this group' });
     }
 
-    // Validate paidBy users are group members
+    
     for (const payer of paidBy) {
       if (!group.members.some(m => m.toString() === payer.user.toString())) {
         return res.status(400).json({ error: `Payer ${payer.user} is not a group member` });
       }
     }
 
-    // Validate paidBy amounts sum to total
+    
     const paidTotal = paidBy.reduce((sum, p) => sum + p.amount, 0);
     if (Math.abs(paidTotal - amount) > 0.01) {
       return res.status(400).json({ error: 'Paid amounts must sum to the total expense amount' });
     }
 
-    // Calculate splits based on splitType
+    
     let splits = [];
 
     if (splitType === 'equal' || !splitType) {
-      // For equal splits, splitAmong can be array of user IDs or undefined (use all group members)
+      
       const participants = splitAmong || group.members.map(m => m.toString());
       
-      // Guard against division by zero
+      
       if (!participants || participants.length === 0) {
         return res.status(400).json({ error: 'Equal split requires at least one participant' });
       }
       
-      // Validate all split participants are group members
+      
       for (const userId of participants) {
         const userIdStr = typeof userId === 'object' ? userId.user?.toString() : userId.toString();
         if (!group.members.some(m => m.toString() === userIdStr)) {
@@ -113,19 +115,19 @@ exports.createExpense = async (req, res) => {
       }
       
       const perPerson = Math.round((amount / participants.length) * 100) / 100;
-      // Handle rounding: give the remainder to the first person
+      
       let remainder = Math.round((amount - perPerson * participants.length) * 100) / 100;
       splits = participants.map((userId, i) => ({
         user: typeof userId === 'object' ? userId.user : userId,
         amount: i === 0 ? perPerson + remainder : perPerson
       }));
     } else if (splitType === 'exact') {
-      // splitAmong should be [{ user, amount }] for exact splits
+      
       if (!Array.isArray(splitAmong) || !splitAmong[0]?.amount) {
         return res.status(400).json({ error: 'Exact split requires amounts for each participant' });
       }
       
-      // Validate all split participants are group members
+      
       for (const split of splitAmong) {
         const userIdStr = split.user?.toString();
         if (!group.members.some(m => m.toString() === userIdStr)) {
@@ -143,7 +145,7 @@ exports.createExpense = async (req, res) => {
         return res.status(400).json({ error: 'Percentage split requires percentages for each participant' });
       }
       
-      // Validate all split participants are group members
+      
       for (const split of splitAmong) {
         const userIdStr = split.user?.toString();
         if (!group.members.some(m => m.toString() === userIdStr)) {
@@ -160,12 +162,12 @@ exports.createExpense = async (req, res) => {
         amount: Math.round((amount * s.percentage / 100) * 100) / 100
       }));
     } else if (splitType === 'shares') {
-      // Share-based split: each person has N shares, split proportionally
+      
       if (!Array.isArray(splitAmong) || splitAmong[0]?.shares === undefined) {
         return res.status(400).json({ error: 'Shares split requires shares for each participant' });
       }
 
-      // Validate all split participants are group members
+      
       for (const split of splitAmong) {
         const userIdStr = split.user?.toString();
         if (!group.members.some(m => m.toString() === userIdStr)) {
@@ -178,13 +180,13 @@ exports.createExpense = async (req, res) => {
         return res.status(400).json({ error: 'Total shares must be greater than 0' });
       }
 
-      // Calculate each person's amount based on their shares
+      
       let calculatedSplits = splitAmong.map(s => ({
         user: s.user,
         amount: Math.round((amount * s.shares / totalShares) * 100) / 100
       }));
 
-      // Handle rounding remainder - give to first person
+      
       const splitSum = calculatedSplits.reduce((sum, s) => sum + s.amount, 0);
       const remainder = Math.round((amount - splitSum) * 100) / 100;
       if (Math.abs(remainder) > 0) {
@@ -194,7 +196,7 @@ exports.createExpense = async (req, res) => {
       splits = calculatedSplits;
     }
 
-    // Final Zero-Sum Integrity Check
+    
     const zeroSumCheck = validateExpenseZeroSum(paidBy, splits, amount);
     if (!zeroSumCheck.valid) {
       return res.status(400).json({ error: zeroSumCheck.error });
@@ -216,7 +218,7 @@ exports.createExpense = async (req, res) => {
     await expense.populate('splits.user', 'name email');
     await expense.populate('createdBy', 'name email');
 
-    // Log activity
+    
     await logActivity({
       group: groupId,
       user: req.user._id,
@@ -237,7 +239,6 @@ exports.createExpense = async (req, res) => {
   }
 };
 
-
 exports.updateExpense = async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id);
@@ -245,18 +246,18 @@ exports.updateExpense = async (req, res) => {
       return res.status(404).json({ error: 'Expense not found' });
     }
 
-    // Only creator can update
+    
     if (expense.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: 'Only the creator can update this expense' });
     }
 
-    // Fetch group to validate members
+    
     const group = await Group.findById(expense.group);
     if (!group) {
       return res.status(404).json({ error: 'Group not found' });
     }
 
-    // Validate new paidBy users are group members
+    
     if (req.body.paidBy) {
       for (const payer of req.body.paidBy) {
         const payerId = payer.user?.toString() || payer.user;
@@ -266,7 +267,7 @@ exports.updateExpense = async (req, res) => {
       }
     }
 
-    // Validate new splits users are group members
+    
     if (req.body.splits) {
       for (const split of req.body.splits) {
         const userId = split.user?.toString() || split.user;
@@ -276,7 +277,7 @@ exports.updateExpense = async (req, res) => {
       }
     }
 
-    // If updating paidBy, splits, or amount, validate zero-sum
+    
     const newPaidBy = req.body.paidBy || expense.paidBy;
     const newSplits = req.body.splits || expense.splits;
     const newAmount = req.body.amount || expense.amount;
@@ -288,7 +289,7 @@ exports.updateExpense = async (req, res) => {
       }
     }
 
-    // Store previous values for activity log
+    
     const previousAmount = expense.amount;
     const previousDescription = expense.description;
     const previousPaidBy = JSON.stringify(expense.paidBy.map(p => ({ user: p.user.toString(), amount: p.amount })));
@@ -299,12 +300,12 @@ exports.updateExpense = async (req, res) => {
     await expense.populate('paidBy.user', 'name email');
     await expense.populate('splits.user', 'name email');
 
-    // Compare new values for activity log (handle both populated and unpopulated cases)
+    
     const getUserId = (user) => user?._id?.toString() || user?.toString() || user;
     const newPaidByStr = JSON.stringify(expense.paidBy.map(p => ({ user: getUserId(p.user), amount: p.amount })));
     const newSplitsStr = JSON.stringify(expense.splits.map(s => ({ user: getUserId(s.user), amount: s.amount })));
 
-    // Build detailed change description
+    
     const changes = [];
     if (previousDescription !== expense.description) {
       changes.push(`renamed "${previousDescription}" → "${expense.description}"`);
@@ -319,7 +320,7 @@ exports.updateExpense = async (req, res) => {
       ? changes.join(', ')
       : `updated "${expense.description}"`;
 
-    // Log activity
+    
     await logActivity({
       group: expense.group,
       user: req.user._id,
@@ -341,7 +342,6 @@ exports.updateExpense = async (req, res) => {
   }
 };
 
-
 exports.deleteExpense = async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id);
@@ -349,41 +349,41 @@ exports.deleteExpense = async (req, res) => {
       return res.status(404).json({ error: 'Expense not found' });
     }
 
-    // Only creator can delete
+    
     if (expense.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: 'Only the creator can delete this expense' });
     }
 
-    // Calculate balance impact (for informational purposes)
+    
     const balanceImpact = [];
     for (const payer of expense.paidBy) {
       balanceImpact.push({
         user: payer.user,
-        change: -payer.amount, // They lose what they were owed
+        change: -payer.amount, 
         reason: 'was payer'
       });
     }
     for (const split of expense.splits) {
       const existing = balanceImpact.find(b => b.user.toString() === split.user.toString());
       if (existing) {
-        existing.change += split.amount; // Add back what they owed
+        existing.change += split.amount; 
       } else {
         balanceImpact.push({
           user: split.user,
-          change: split.amount, // They no longer owe this
+          change: split.amount, 
           reason: 'was in split'
         });
       }
     }
 
-    // Store info for activity log before deletion
+    
     const deletedDescription = expense.description;
     const deletedAmount = expense.amount;
     const groupId = expense.group;
 
     await expense.deleteOne();
 
-    // Log activity
+    
     await logActivity({
       group: groupId,
       user: req.user._id,
@@ -412,7 +412,6 @@ exports.deleteExpense = async (req, res) => {
   }
 };
 
-
 exports.getGroupBalances = async (req, res) => {
   try {
     const groupId = req.params.groupId;
@@ -422,23 +421,23 @@ exports.getGroupBalances = async (req, res) => {
       return res.status(404).json({ error: 'Group not found' });
     }
 
-    // Initialize balances: for each pair of members, track net amount
+    
     const balances = {};
     group.members.forEach(m => {
       balances[m._id.toString()] = { user: m, total: 0 };
     });
 
-    // Process expenses
+    
     const expenses = await Expense.find({ group: groupId });
     for (const expense of expenses) {
-      // For each payer, they are owed their payment amount
+      
       for (const payer of expense.paidBy) {
         const payerId = payer.user.toString();
         if (balances[payerId]) {
           balances[payerId].total += payer.amount;
         }
       }
-      // For each split participant, they owe their share
+      
       for (const split of expense.splits) {
         const userId = split.user.toString();
         if (balances[userId]) {
@@ -447,17 +446,17 @@ exports.getGroupBalances = async (req, res) => {
       }
     }
 
-    // Process settlements
+    
     const settlements = await Settlement.find({ group: groupId });
     for (const settlement of settlements) {
       const fromId = settlement.from.toString();
       const toId = settlement.to.toString();
-      // from paid to, so from's balance goes up, to's goes down
+      
       if (balances[fromId]) balances[fromId].total += settlement.amount;
       if (balances[toId]) balances[toId].total -= settlement.amount;
     }
 
-    // Convert to array and round
+    
     const result = Object.values(balances).map(b => ({
       user: b.user,
       balance: Math.round(b.total * 100) / 100
@@ -469,8 +468,6 @@ exports.getGroupBalances = async (req, res) => {
   }
 };
 
-// Debt simplification with circular debt cancellation
-// Returns minimum transactions needed to settle all balances
 exports.getSimplifiedDebts = async (req, res) => {
   try {
     const groupId = req.params.groupId;
@@ -480,7 +477,7 @@ exports.getSimplifiedDebts = async (req, res) => {
       return res.status(404).json({ error: 'Group not found' });
     }
 
-    // Calculate net balances (same logic as getGroupBalances)
+    
     const balances = {};
     group.members.forEach(m => {
       balances[m._id.toString()] = { user: m, total: 0 };
@@ -506,7 +503,7 @@ exports.getSimplifiedDebts = async (req, res) => {
       if (balances[toId]) balances[toId].total -= settlement.amount;
     }
 
-    // Separate into creditors (owed money, positive) and debtors (owe money, negative)
+    
     const creditors = [];
     const debtors = [];
     
@@ -517,14 +514,14 @@ exports.getSimplifiedDebts = async (req, res) => {
       } else if (rounded < -0.01) {
         debtors.push({ user: data.user, amount: Math.abs(rounded) });
       }
-      // If ~0, person is settled - no action needed (circular debts cancel here)
+      
     }
 
-    // Sort by amount descending for greedy matching
+    
     creditors.sort((a, b) => b.amount - a.amount);
     debtors.sort((a, b) => b.amount - a.amount);
 
-    // Greedy algorithm: match largest debtor with largest creditor
+    
     const simplifiedTransactions = [];
     let i = 0, j = 0;
 
@@ -546,7 +543,7 @@ exports.getSimplifiedDebts = async (req, res) => {
       debtor.amount -= amount;
       creditor.amount -= amount;
 
-      // Move to next debtor/creditor if fully matched
+      
       if (debtor.amount < 0.01) i++;
       if (creditor.amount < 0.01) j++;
     }
@@ -561,8 +558,6 @@ exports.getSimplifiedDebts = async (req, res) => {
   }
 };
 
-// Group Zero-Sum Integrity Check
-// Verifies all balances in the group sum to exactly zero
 exports.checkGroupIntegrity = async (req, res) => {
   try {
     const groupId = req.params.groupId;
@@ -574,7 +569,7 @@ exports.checkGroupIntegrity = async (req, res) => {
 
     const issues = [];
 
-    // Check each expense for zero-sum integrity
+    
     const expenses = await Expense.find({ group: groupId });
     for (const expense of expenses) {
       const paidTotal = expense.paidBy.reduce((sum, p) => sum + p.amount, 0);
@@ -599,7 +594,7 @@ exports.checkGroupIntegrity = async (req, res) => {
       }
     }
 
-    // Calculate group-wide balances and verify they sum to zero
+    
     const balances = {};
     group.members.forEach(m => {
       balances[m._id.toString()] = 0;
@@ -620,7 +615,7 @@ exports.checkGroupIntegrity = async (req, res) => {
       }
     }
 
-    // Include settlements
+    
     const settlements = await Settlement.find({ group: groupId });
     for (const settlement of settlements) {
       const fromId = settlement.from.toString();
@@ -629,7 +624,7 @@ exports.checkGroupIntegrity = async (req, res) => {
       if (balances[toId] !== undefined) balances[toId] -= settlement.amount;
     }
 
-    // Sum all balances - should be exactly 0
+    
     const totalBalance = Object.values(balances).reduce((sum, b) => sum + b, 0);
     const roundedTotal = Math.round(totalBalance * 100) / 100;
 

@@ -3,7 +3,6 @@ import { expect } from '@playwright/test';
 
 const { Given, When, Then } = createBdd();
 
-// Navigation steps
 Given('I am on the register page', async ({ page }) => {
   await page.goto('/register');
 });
@@ -13,7 +12,7 @@ Given('I am on the login page', async ({ page }) => {
 });
 
 Given('I am on the create group page', async ({ page }) => {
-  // Mock the auth verification API to prevent token invalidation
+  
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -24,7 +23,7 @@ Given('I am on the create group page', async ({ page }) => {
       })
     });
   });
-  // Use addInitScript to set auth before page loads
+  
   await page.addInitScript(() => {
     localStorage.setItem('token', 'mock-jwt-token');
     localStorage.setItem('user', JSON.stringify({
@@ -36,7 +35,6 @@ Given('I am on the create group page', async ({ page }) => {
   await page.goto('/create-group');
 });
 
-// Page title assertions
 Then('I should see the page title {string}', async ({ page }, title) => {
   await expect(page.locator('h1')).toHaveText(title);
 });
@@ -45,7 +43,6 @@ Then('I should see the subtitle {string}', async ({ page }, subtitle) => {
   await expect(page.locator('.register-subtitle, .login-subtitle')).toHaveText(subtitle);
 });
 
-// Form field visibility
 Then('I should see the name input field', async ({ page }) => {
   await expect(page.locator('#name')).toBeVisible();
 });
@@ -90,7 +87,6 @@ Then('I should see a link to register page', async ({ page }) => {
   await expect(page.locator('a[href="/register"]')).toBeVisible();
 });
 
-// Form interactions
 When('I click the submit button', async ({ page }) => {
   await page.locator('button[type="submit"]').click();
 });
@@ -143,7 +139,6 @@ When('I click the create account link', async ({ page }) => {
   await page.click('a:has-text("Create an Account"), .btn-secondary');
 });
 
-// Validation error assertions
 Then('I should see a validation error', async ({ page }) => {
   await expect(page.locator('text=required').first()).toBeVisible({ timeout: 5000 });
 });
@@ -160,7 +155,6 @@ Then('I should not see any validation errors', async ({ page }) => {
   await expect(page.locator('.error-box')).not.toBeVisible();
 });
 
-// Navigation assertions
 Then('I should be on the login page', async ({ page }) => {
   await expect(page).toHaveURL('/login');
 });
@@ -169,12 +163,10 @@ Then('I should be on the register page', async ({ page }) => {
   await expect(page).toHaveURL('/register');
 });
 
-// Checkbox assertions
 Then('the remember me checkbox should be checked', async ({ page }) => {
   await expect(page.locator('input[type="checkbox"]')).toBeChecked();
 });
 
-// Create Group specific steps
 Then('I should see {string} label', async ({ page }, label) => {
   await expect(page.locator(`text=${label}`)).toBeVisible();
 });
@@ -236,7 +228,7 @@ Then('I should not see the renewal date field', async ({ page }) => {
 });
 
 When('I click the create group button', async ({ page }) => {
-  // Mock the groups API for the create request
+  
   await page.route('**/api/groups', async (route) => {
     if (route.request().method() === 'POST') {
       await route.fulfill({
@@ -252,7 +244,7 @@ When('I click the create group button', async ({ page }) => {
     }
   });
 
-  // Mock friends API for the add members step
+  
   await page.route('**/api/friends', async (route) => {
     await route.fulfill({
       status: 200,
@@ -261,7 +253,7 @@ When('I click the create group button', async ({ page }) => {
     });
   });
 
-  // Could be a button or a router-link with btn-create class
+  
   await page.click('.btn-create, button:has-text("Create Group")');
 });
 
@@ -273,9 +265,8 @@ Then('the balance alerts setting should be active', async ({ page }) => {
   await expect(page.locator('.toggle-btn').first()).toHaveClass(/toggle-btn--active/);
 });
 
-// Add Group Members specific steps
 Given('I am on the add members page', async ({ page }) => {
-  // Mock the auth verification API to prevent token invalidation
+  
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -287,7 +278,7 @@ Given('I am on the add members page', async ({ page }) => {
     });
   });
 
-  // Mock the groups API first (before any navigation)
+  
   await page.route('**/api/groups', async (route) => {
     if (route.request().method() === 'POST') {
       await route.fulfill({
@@ -309,7 +300,7 @@ Given('I am on the add members page', async ({ page }) => {
     }
   });
   
-  // Mock the groups balance total API
+  
   await page.route('**/api/groups/balance/total', async (route) => {
     await route.fulfill({
       status: 200,
@@ -318,7 +309,7 @@ Given('I am on the add members page', async ({ page }) => {
     });
   });
   
-  // Mock the friends API
+  
   await page.route('**/api/friends', async (route) => {
     await route.fulfill({
       status: 200,
@@ -330,7 +321,7 @@ Given('I am on the add members page', async ({ page }) => {
     });
   });
 
-  // Use addInitScript to set auth before page loads
+  
   await page.addInitScript(() => {
     localStorage.setItem('token', 'mock-jwt-token');
     localStorage.setItem('user', JSON.stringify({
@@ -340,22 +331,22 @@ Given('I am on the add members page', async ({ page }) => {
     }));
   });
   
-  // Navigate to create group - auth will be set before Vue router checks
+  
   await page.goto('/create-group');
   await page.waitForSelector('#groupName', { timeout: 10000 });
   await page.fill('#groupName', 'Test Group');
-  // Must select a type to enable the create button
+  
   await page.click('button:has-text("Trip")');
-  // Wait for the Create Group button to be enabled before clicking
+  
   const createBtn = page.locator('.btn-create');
   await expect(createBtn).toBeEnabled({ timeout: 5000 });
   await createBtn.click();
-  // Wait for the step to change to members
+  
   await expect(page.locator('h2:has-text("Add Members")')).toBeVisible({ timeout: 15000 });
 });
 
 Then('I should see the title {string}', async ({ page }, title) => {
-  // Check for h1 or h2 with the title - use Playwright's toBeVisible for auto-waiting
+  
   const h1 = page.locator(`h1:has-text("${title}")`).first();
   const h2 = page.locator(`h2:has-text("${title}")`).first();
   const titleLocator = page.locator(`h1:has-text("${title}"), h2:has-text("${title}")`).first();
@@ -395,7 +386,7 @@ Then('the friend {string} should be selected', async ({ page }, friendName) => {
 });
 
 Then('the friend {string} should not be selected', async ({ page }, friendName) => {
-  // Friend item should exist but not have the selected class
+  
   const friendItem = page.locator(`.friend-item:has-text("${friendName}")`);
   await expect(friendItem).toBeVisible();
   await expect(friendItem).not.toHaveClass(/friend-item--selected/);
@@ -421,7 +412,6 @@ Then('I should be on the groups page', async ({ page }) => {
   await expect(page).toHaveURL(/\/groups/);
 });
 
-// Create Expense specific steps
 Given('I am on the create expense page', async ({ page }) => {
   const mockGroupId = 'mock-group-id';
   const mockUserId = 'mock-user-id';
@@ -437,7 +427,7 @@ Given('I am on the create expense page', async ({ page }) => {
     createdBy: mockUserId
   };
   
-  // Mock the auth verification API
+  
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -449,8 +439,8 @@ Given('I am on the create expense page', async ({ page }) => {
     });
   });
   
-  // Mock any group fetch - match the exact endpoint pattern  
-  // API returns { success: true, data: group }
+  
+  
   await page.route(/\/api\/groups\/[^/]+$/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -462,7 +452,7 @@ Given('I am on the create expense page', async ({ page }) => {
     });
   });
   
-  // Use addInitScript to set auth before page loads
+  
   await page.addInitScript(() => {
     localStorage.setItem('token', 'mock-jwt-token');
     localStorage.setItem('user', JSON.stringify({
@@ -472,12 +462,12 @@ Given('I am on the create expense page', async ({ page }) => {
     }));
   });
   
-  // Navigate with groupId to load the mocked group
+  
   await page.goto(`/create-expense?groupId=${mockGroupId}`);
   
-  // Wait for the component to fully render (loading spinner gone, form visible)
+  
   await page.waitForSelector('.create-expense', { timeout: 10000 });
-  // Wait for group name to appear confirming mock worked
+  
   await page.waitForSelector('.group-indicator__name', { timeout: 5000 });
 });
 
@@ -518,12 +508,12 @@ When('I enter {string} in the description field', async ({ page }, value) => {
 });
 
 When('I click on payer {string}', async ({ page }, payerName) => {
-  // Click payer in the "Paid by" section specifically (not the "Split among" section)
+  
   await page.locator(`.paid-by .payer-option:has-text("${payerName}"), .paid-by__options .payer-option:has-text("${payerName}")`).first().click();
 });
 
 Then('the payer {string} should be active', async ({ page }, payerName) => {
-  // Check payer in the "Paid by" section specifically
+  
   await expect(page.locator(`.paid-by .payer-option:has-text("${payerName}"), .paid-by__options .payer-option:has-text("${payerName}")`).first()).toHaveClass(/active/);
 });
 
@@ -540,11 +530,10 @@ When('I click the Split evenly button', async ({ page }) => {
 });
 
 Then('I should see split amounts displayed', async ({ page }) => {
-  // Check that split amounts section is visible
+  
   await expect(page.locator('.split-amounts')).toBeVisible();
 });
 
-// Split Type step definitions
 Then('I should see the split type selector', async ({ page }) => {
   await expect(page.locator('.split-type')).toBeVisible();
 });
@@ -602,7 +591,6 @@ Then('I should see {string} in exact amount for {string}', async ({ page }, amou
   await expect(row.locator('.split-value-item__field')).toHaveValue(amount);
 });
 
-// API Mocking steps for authentication
 Given('the API will return a successful registration response', async ({ page }) => {
   await page.route('**/api/auth/register', async (route) => {
     await route.fulfill({
@@ -620,7 +608,7 @@ Given('the API will return a successful registration response', async ({ page })
     });
   });
   
-  // Mock groups API that's called after redirect
+  
   await page.route('**/api/groups', async (route) => {
     if (route.request().url().includes('/balance/total')) {
       return route.continue();
@@ -658,7 +646,7 @@ Given('the API will return a successful login response', async ({ page }) => {
     });
   });
   
-  // Mock groups API that's called after redirect
+  
   await page.route('**/api/groups', async (route) => {
     if (route.request().url().includes('/balance/total')) {
       return route.continue();
@@ -710,7 +698,6 @@ Given('the API will delay response for {int} second(s)', async ({ page }, second
   });
 });
 
-// Redirect assertions
 Then('I should be redirected to the expenses page', async ({ page }) => {
   await expect(page).toHaveURL(/\/expenses/);
 });
@@ -723,12 +710,10 @@ Then('I should be redirected to the dashboard', async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard/);
 });
 
-// Error message assertions
 Then('I should see {string} error message', async ({ page }, errorMessage) => {
   await expect(page.locator('.error-box')).toContainText(errorMessage);
 });
 
-// Loading state assertions
 Then('I should see the loading spinner', async ({ page }) => {
   await expect(page.locator('.btn-loading')).toBeVisible();
 });
@@ -737,9 +722,8 @@ Then('the submit button should be disabled', async ({ page }) => {
   await expect(page.locator('button[type="submit"]')).toBeDisabled();
 });
 
-// Account Page steps
 Given('I am logged in as {string}', async ({ page }, email) => {
-  // Mock the auth verification API to prevent token invalidation
+  
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -750,7 +734,7 @@ Given('I am logged in as {string}', async ({ page }, email) => {
       })
     });
   });
-  // Use addInitScript to set auth before page loads
+  
   await page.addInitScript((email) => {
     localStorage.setItem('token', 'mock-jwt-token');
     localStorage.setItem('user', JSON.stringify({
@@ -762,7 +746,7 @@ Given('I am logged in as {string}', async ({ page }, email) => {
 });
 
 Given('I am on the account page', async ({ page }) => {
-  // Mock the /auth/me endpoint
+  
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -805,9 +789,8 @@ Then('I should not be authenticated', async ({ page }) => {
   expect(token).toBeNull();
 });
 
-// Friends Page steps
 Given('I am logged in', async ({ page }) => {
-  // Mock the auth verification API to prevent token invalidation
+  
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -819,7 +802,7 @@ Given('I am logged in', async ({ page }) => {
     });
   });
   
-  // Mock groups API to prevent 401 errors from unmocked endpoints
+  
   await page.route('**/api/groups/balance/total', async (route) => {
     await route.fulfill({
       status: 200,
@@ -836,7 +819,7 @@ Given('I am logged in', async ({ page }) => {
     });
   });
   
-  // Use addInitScript to set auth before page loads
+  
   await page.addInitScript(() => {
     localStorage.setItem('token', 'mock-jwt-token');
     localStorage.setItem('user', JSON.stringify({
@@ -1001,13 +984,12 @@ When('I click the remove friend button', async ({ page }) => {
 });
 
 Then('the friend should be removed from the list', async ({ page }) => {
-  // Wait for animation/removal
+  
   await page.waitForTimeout(500);
 });
 
-// Groups Page steps
 Given('I am on the groups page', async ({ page }) => {
-  // Mock auth/me to keep token valid
+  
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -1122,7 +1104,6 @@ Given('I have groups of different types', async ({ page }) => {
   await page.goto('/groups');
 });
 
-// Overall Balance steps
 Given('I have groups with a positive overall balance', async ({ page }) => {
   await page.route('**/api/groups', async (route) => {
     if (route.request().method() === 'GET') {
@@ -1276,7 +1257,6 @@ Then('Subscription groups should show credit card icon', async ({ page }) => {
   await expect(page.locator('.group-icon--subscription')).toBeVisible();
 });
 
-// Per-group balance steps
 Then('I should see balance amount on each group', async ({ page }) => {
   await expect(page.locator('.group-item .group-balance-amount').first()).toBeVisible();
 });

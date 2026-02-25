@@ -1,11 +1,11 @@
 <template>
   <div class="account-page">
-    <!-- Header -->
+    
     <div class="account-header">
       <h1 class="account-title">Account</h1>
     </div>
 
-    <!-- Account Info Row -->
+    
     <div class="account-card">
       <div class="account-row" @click="editProfile">
         <div class="account-row__icon">
@@ -21,7 +21,7 @@
 
       <div class="divider"></div>
 
-      <!-- Logout Row -->
+      
       <div class="account-row account-row--danger" @click="handleLogout">
         <div class="account-row__icon account-row__icon--danger">
           <LogOut />
@@ -46,7 +46,7 @@ const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 
 const editProfile = () => {
-  // TODO: Navigate to edit profile
+  
 }
 
 const handleLogout = () => {

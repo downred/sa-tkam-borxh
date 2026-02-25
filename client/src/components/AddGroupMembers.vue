@@ -3,7 +3,7 @@
     <h2 class="add-members__title">Add Members</h2>
     <p class="add-members__subtitle">Invite people to join your group</p>
 
-    <!-- Add by Email -->
+    
     <div class="add-email">
       <FormInput
         id="email"
@@ -22,7 +22,7 @@
       </button>
     </div>
 
-    <!-- Share Link -->
+    
     <div class="share-link">
       <label class="share-link__label">Share Group Link</label>
       <div class="share-link__box">
@@ -40,22 +40,22 @@
       </div>
     </div>
 
-    <!-- Friends List -->
+    
     <div class="friends-list">
       <label class="friends-list__label">Your Friends</label>
       
-      <!-- Loading State -->
+      
       <div v-if="loadingFriends" class="friends-list__loading">
         <Loader2 class="animate-spin" />
         <span>Loading friends...</span>
       </div>
 
-      <!-- Empty State -->
+      
       <div v-else-if="friends.length === 0" class="friends-list__empty">
         <p>No friends yet. Add friends from the Friends page.</p>
       </div>
 
-      <!-- Friends -->
+      
       <div v-else class="friends-list__items">
         <div
           v-for="friend in friends"
@@ -78,7 +78,7 @@
       </div>
     </div>
 
-    <!-- Actions -->
+    
     <div class="add-members__actions">
       <button type="button" class="btn-secondary" @click="$emit('skip')">
         Skip for Now
@@ -187,7 +187,6 @@ const handleDone = () => {
   }
 }
 
-// Add by Email
 .add-email {
   @apply flex gap-3 items-end;
 
@@ -206,7 +205,6 @@ const handleDone = () => {
   }
 }
 
-// Share Link
 .share-link {
   &__label {
     @apply block text-sm font-medium text-secondary-700 mb-2;
@@ -233,7 +231,6 @@ const handleDone = () => {
   }
 }
 
-// Friends List
 .friends-list {
   &__label {
     @apply block text-sm font-medium text-secondary-700 mb-3;
@@ -256,7 +253,6 @@ const handleDone = () => {
   }
 }
 
-// Friend Item
 .friend-item {
   @apply flex items-center gap-3 p-3 bg-secondary-50 rounded-xl cursor-pointer transition-all;
   @apply hover:bg-secondary-100;
@@ -286,7 +282,6 @@ const handleDone = () => {
   }
 }
 
-// Buttons
 .btn-primary {
   @apply flex-1 py-3 px-4 bg-primary-600 text-white font-semibold rounded-xl transition-all;
   @apply hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;

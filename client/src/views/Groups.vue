@@ -1,11 +1,11 @@
 <template>
   <div class="groups-page">
-    <!-- Header -->
+    
     <div class="groups-header">
       <h1 class="header-title">Your Groups</h1>
       <p class="header-subtitle">{{ groups.length }} group{{ groups.length !== 1 ? 's' : '' }}</p>
       
-      <!-- Total Balance Display -->
+      
       <div v-if="groups.length > 0" class="balance-card">
         <p class="balance-label">Overall Balance</p>
         <p class="balance-amount" :class="balanceClass">
@@ -17,14 +17,14 @@
       </div>
     </div>
 
-    <!-- Groups Card -->
+    
     <div class="groups-card">
-      <!-- Loading State -->
+      
       <div v-if="loading" class="groups-loading">
         <Loader2 class="w-8 h-8 animate-spin text-primary-500" />
       </div>
 
-      <!-- Empty State -->
+      
       <div v-else-if="groups.length === 0" class="groups-empty">
         <Users class="w-16 h-16 text-secondary-300 mb-4" />
         <p class="text-secondary-600 text-lg font-medium">No groups yet</p>
@@ -35,7 +35,7 @@
         </router-link>
       </div>
 
-      <!-- Groups List -->
+      
       <div v-else class="groups-list">
         <div 
           v-for="group in groups" 
@@ -62,7 +62,7 @@
         </div>
       </div>
 
-      <!-- Create Group FAB (when groups exist) -->
+      
       <router-link 
         v-if="groups.length > 0" 
         to="/create-group" 
@@ -150,7 +150,6 @@ onMounted(() => {
   @apply min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex flex-col;
 }
 
-// Header
 .groups-header {
   @apply px-6 pt-12 pb-8 text-center;
 
@@ -171,7 +170,6 @@ onMounted(() => {
   @apply text-primary-200 text-sm;
 }
 
-// Balance Card
 .balance-card {
   @apply mt-6 mx-auto max-w-md bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center;
   @apply border border-white/20;
@@ -201,7 +199,6 @@ onMounted(() => {
   @apply text-primary-200 text-sm;
 }
 
-// Card
 .groups-card {
   @apply flex-1 bg-white rounded-t-3xl px-6 pt-6 pb-24 relative;
 
@@ -210,12 +207,10 @@ onMounted(() => {
   }
 }
 
-// Loading
 .groups-loading {
   @apply flex items-center justify-center py-20;
 }
 
-// Empty State
 .groups-empty {
   @apply flex flex-col items-center justify-center py-12 text-center;
 }
@@ -225,7 +220,6 @@ onMounted(() => {
   @apply hover:bg-primary-700 transition-colors;
 }
 
-// Groups List
 .groups-list {
   @apply space-y-3;
 }
@@ -322,7 +316,6 @@ onMounted(() => {
   @apply w-5 h-5 text-secondary-400;
 }
 
-// FAB
 .fab-create {
   @apply fixed bottom-24 right-6 w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg;
   @apply flex items-center justify-center;

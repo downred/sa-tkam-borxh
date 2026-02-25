@@ -10,7 +10,6 @@ const app = createApp(App)
 app.use(pinia)
 app.use(router)
 
-// Initialize auth store (fetch user if token exists)
 const authStore = useAuthStore()
 authStore.init()
 

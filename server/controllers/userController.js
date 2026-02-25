@@ -1,6 +1,5 @@
 const User = require('../models/User');
 
-
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
@@ -9,7 +8,6 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 exports.getUserById = async (req, res) => {
   try {
@@ -23,7 +21,6 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-
 exports.createUser = async (req, res) => {
   try {
     const user = new User(req.body);
@@ -33,7 +30,6 @@ exports.createUser = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-
 
 exports.updateUser = async (req, res) => {
   try {
@@ -51,7 +47,6 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-
 exports.deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
@@ -64,7 +59,6 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-
 exports.addFriend = async (req, res) => {
   try {
     const { email } = req.body;
@@ -72,6 +66,11 @@ exports.addFriend = async (req, res) => {
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Please provide a valid email address' });
     }
 
     const friend = await User.findOne({ email: email.toLowerCase() });
@@ -97,7 +96,6 @@ exports.addFriend = async (req, res) => {
   }
 };
 
-
 exports.removeFriend = async (req, res) => {
   try {
     const { friendId } = req.params;
@@ -116,7 +114,6 @@ exports.removeFriend = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 exports.getFriends = async (req, res) => {
   try {

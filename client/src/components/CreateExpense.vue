@@ -2,7 +2,7 @@
   <div class="create-expense">
     <h2 class="create-expense__title">New Expense</h2>
 
-    <!-- Group Indicator -->
+    
     <div class="group-indicator">
       <div class="group-indicator__icon" :class="`group-indicator__icon--${group?.type?.toLowerCase() || 'other'}`">
         <component :is="groupIcon" />
@@ -13,7 +13,7 @@
       </div>
     </div>
 
-    <!-- Description -->
+    
     <FormInput
       id="description"
       v-model="description"
@@ -26,7 +26,7 @@
       </template>
     </FormInput>
 
-    <!-- Amount -->
+    
     <div class="amount-input">
       <label for="amount" class="amount-input__label">Amount</label>
       <div class="amount-input__wrapper">
@@ -43,17 +43,13 @@
       </div>
     </div>
 
-    <!-- Paid By -->
+    
     <div class="paid-by">
       <div class="paid-by__header">
         <label class="paid-by__label">Paid by</label>
-        <!-- <button 
-          type="button" 
-          class="paid-by__toggle"
-          >
-          {{ multiplePayersMode ? 'Single payer' : 'Multiple payers' }} -->
-          <!-- @click="multiplePayersMode = !multiplePayersMode" -->
-        <!-- </button> -->
+        
+          
+        
       </div>
       <div class="paid-by__options">
         <button
@@ -71,7 +67,7 @@
         </button>
       </div>
 
-      <!-- Split Amounts (when multiple payers) -->
+      
       <div v-if="multiplePayersMode && selectedPayers.length > 0" class="split-amounts">
         <div class="split-amounts__header">
           <span class="split-amounts__label">Amount per person</span>
@@ -114,7 +110,7 @@
       </div>
     </div>
 
-    <!-- Split Among -->
+    
     <div class="split-among">
       <div class="split-among__header">
         <label class="split-among__label">Split among</label>
@@ -136,7 +132,7 @@
         </button>
       </div>
 
-      <!-- Split Type Selector -->
+      
       <div class="split-type">
         <label class="split-type__label">Split type</label>
         <div class="split-type__options">
@@ -153,12 +149,12 @@
         </div>
       </div>
 
-      <!-- Equal Split Preview -->
+      
       <p v-if="splitType === 'equal' && selectedSplitMembers.length > 0 && amount" class="split-among__preview">
         €{{ splitPreviewAmount }} per person (equal split)
       </p>
 
-      <!-- Exact Amounts -->
+      
       <div v-if="splitType === 'exact' && selectedSplitMembers.length > 0" class="split-values">
         <div class="split-values__header">
           <span class="split-values__label">Exact amounts</span>
@@ -190,7 +186,7 @@
         </p>
       </div>
 
-      <!-- Percentage Split -->
+      
       <div v-if="splitType === 'percentage' && selectedSplitMembers.length > 0" class="split-values">
         <div class="split-values__header">
           <span class="split-values__label">Percentage per person</span>
@@ -224,7 +220,7 @@
         </p>
       </div>
 
-      <!-- Shares Split -->
+      
       <div v-if="splitType === 'shares' && selectedSplitMembers.length > 0" class="split-values">
         <div class="split-values__header">
           <span class="split-values__label">Shares per person</span>
@@ -258,10 +254,10 @@
       </div>
     </div>
 
-    <!-- Error -->
+    
     <p v-if="submitError" class="submit-error">{{ submitError }}</p>
 
-    <!-- Create Button -->
+    
     <button 
       type="button" 
       class="btn-create" 
@@ -330,18 +326,15 @@ const groupMembers = computed(() => {
   })
 })
 
-// Initialize split members to all group members
 const initSplitMembers = () => {
   selectedSplitMembers.value = groupMembers.value.map(m => m.id)
 }
 
-// Watch for group loading
 import { watch } from 'vue'
 watch(() => props.group, () => {
   if (props.group) initSplitMembers()
 }, { immediate: true })
 
-// Resolve 'you' to actual user ID
 const resolveUserId = (id) => {
   if (id === 'you') return authStore.user?._id
   return id
@@ -391,7 +384,6 @@ const splitPreviewAmount = computed(() => {
   return (parseFloat(amount.value) / selectedSplitMembers.value.length).toFixed(2)
 })
 
-// Exact split
 const exactTotal = computed(() => {
   return selectedSplitMembers.value.reduce((sum, id) => {
     return sum + (parseFloat(splitExactAmounts[id]) || 0)
@@ -406,7 +398,6 @@ const splitExactEvenly = () => {
   })
 }
 
-// Percentage split
 const percentageTotal = computed(() => {
   return selectedSplitMembers.value.reduce((sum, id) => {
     return sum + (parseFloat(splitPercentages[id]) || 0)
@@ -428,7 +419,6 @@ const splitPercentageEvenly = () => {
   })
 }
 
-// Shares split
 const totalShares = computed(() => {
   return selectedSplitMembers.value.reduce((sum, id) => {
     return sum + (parseInt(splitShares[id]) || 0)
@@ -465,7 +455,7 @@ const canCreate = computed(() => {
   if (!hasBasics) return false
   if (selectedSplitMembers.value.length === 0) return false
   
-  // Validate payer amounts
+  
   if (multiplePayersMode.value) {
     if (selectedPayers.value.length === 0) return false
     if (Math.abs(payerTotal.value - parseFloat(amount.value)) >= 0.01) return false
@@ -473,7 +463,7 @@ const canCreate = computed(() => {
     return false
   }
 
-  // Validate split type specific requirements
+  
   switch (splitType.value) {
     case 'exact':
       return Math.abs(exactTotal.value - parseFloat(amount.value)) < 0.01
@@ -481,7 +471,7 @@ const canCreate = computed(() => {
       return percentageTotal.value === 100
     case 'shares':
       return totalShares.value > 0
-    default: // equal
+    default: 
       return true
   }
 })
@@ -497,34 +487,34 @@ const handleCreate = async () => {
       ? selectedPayers.value.map(id => ({ user: resolveUserId(id), amount: parseFloat(payerAmounts[id]) }))
       : [{ user: resolveUserId(selectedPayers.value[0]), amount: parseFloat(amount.value) }]
 
-    // Build splitAmong based on split type (backend expects different formats)
+    
     let splitAmong
     const totalAmount = parseFloat(amount.value)
     
     switch (splitType.value) {
       case 'exact':
-        // Backend expects: [{ user, amount }]
+        
         splitAmong = selectedSplitMembers.value.map(id => ({
           user: resolveUserId(id),
           amount: parseFloat(splitExactAmounts[id]) || 0
         }))
         break
       case 'percentage':
-        // Backend expects: [{ user, percentage }]
+        
         splitAmong = selectedSplitMembers.value.map(id => ({
           user: resolveUserId(id),
           percentage: parseFloat(splitPercentages[id]) || 0
         }))
         break
       case 'shares':
-        // Backend expects: [{ user, shares }]
+        
         splitAmong = selectedSplitMembers.value.map(id => ({
           user: resolveUserId(id),
           shares: parseInt(splitShares[id]) || 0
         }))
         break
-      default: // equal
-        // Backend expects: array of user IDs
+      default: 
+        
         splitAmong = selectedSplitMembers.value.map(id => resolveUserId(id))
     }
 
@@ -556,7 +546,6 @@ const handleCreate = async () => {
   }
 }
 
-// Group Indicator
 .group-indicator {
   @apply flex items-center gap-3 p-4 bg-primary-50 rounded-xl;
 
@@ -597,7 +586,6 @@ const handleCreate = async () => {
   }
 }
 
-// Amount Input
 .amount-input {
   &__label {
     @apply block text-sm font-medium text-secondary-700 mb-2;
@@ -627,7 +615,6 @@ const handleCreate = async () => {
   }
 }
 
-// Paid By
 .paid-by {
   &__header {
     @apply flex items-center justify-between mb-3;
@@ -646,7 +633,6 @@ const handleCreate = async () => {
   }
 }
 
-// Split Amounts
 .split-amounts {
   @apply mt-4 pt-4 border-t border-secondary-200;
 
@@ -731,14 +717,12 @@ const handleCreate = async () => {
   }
 }
 
-// Create Button
 .btn-create {
   @apply w-full py-3.5 px-4 bg-primary-600 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/30 transition-all;
   @apply hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
   @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-600;
 }
 
-// Split Among
 .split-among {
   &__header {
     @apply flex items-center justify-between mb-3;
@@ -761,7 +745,6 @@ const handleCreate = async () => {
   }
 }
 
-// Split Type Selector
 .split-type {
   @apply mt-4 pt-4 border-t border-secondary-200;
 
@@ -784,7 +767,6 @@ const handleCreate = async () => {
   }
 }
 
-// Split Values (Exact, Percentage, Shares)
 .split-values {
   @apply mt-4 pt-4 border-t border-secondary-200;
 
@@ -859,7 +841,6 @@ const handleCreate = async () => {
   }
 }
 
-// Error
 .submit-error {
   @apply text-sm text-red-600 font-medium;
 }

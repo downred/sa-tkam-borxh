@@ -59,13 +59,13 @@ describe("Settlements API", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Auth middleware finds user
+    
     User.findById = jest.fn().mockResolvedValue(mockUser);
   });
 
-  // ───────────────────────────────────────────────
-  // GET /api/groups/:groupId/settlements
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Get Group Settlements", () => {
     describe("when settlements exist for group", () => {
       it("should return all settlements sorted by date", async () => {
@@ -127,9 +127,9 @@ describe("Settlements API", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // POST /api/settlements
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Create Settlement", () => {
     describe("when creating with valid data", () => {
       it("should create a new settlement", async () => {
@@ -189,7 +189,7 @@ describe("Settlements API", () => {
       it("should return 403 error", async () => {
         const groupWithoutUser = {
           ...mockGroup,
-          members: [mockUser2._id], // Current user not in members
+          members: [mockUser2._id], 
         };
         Group.findById = jest.fn().mockResolvedValue(groupWithoutUser);
 
@@ -216,7 +216,7 @@ describe("Settlements API", () => {
           .set("Authorization", `Bearer ${validToken}`)
           .send({
             groupId: groupId,
-            to: "nonmember123456789012", // Not in group members
+            to: "nonmember123456789012", 
             amount: 50,
           });
 
@@ -234,7 +234,7 @@ describe("Settlements API", () => {
           .set("Authorization", `Bearer ${validToken}`)
           .send({
             groupId: groupId,
-            to: mockUser._id, // Same as authenticated user
+            to: mockUser._id, 
             amount: 50,
           });
 
@@ -307,9 +307,9 @@ describe("Settlements API", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // DELETE /api/settlements/:id
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Delete Settlement", () => {
     describe("when deleting own settlement", () => {
       it("should delete the settlement successfully", async () => {
@@ -317,11 +317,11 @@ describe("Settlements API", () => {
           _id: "s1",
           group: groupId,
           from: mockUser2._id,
-          to: mockUser._id, // Current user is the recipient
+          to: mockUser._id, 
           amount: 50,
           deleteOne: jest.fn().mockResolvedValue(true),
           populate: jest.fn().mockImplementation(function() {
-            // Mock populate to set from/to with name property
+            
             this.from = { _id: mockUser2._id, name: "User2", email: "user2@test.com" };
             this.to = { _id: mockUser._id, name: "TestUser", email: "test@example.com" };
             return Promise.resolve(this);
@@ -358,7 +358,7 @@ describe("Settlements API", () => {
           _id: "s1",
           group: groupId,
           from: mockUser._id,
-          to: mockUser2._id, // Different user is the recipient
+          to: mockUser2._id, 
           amount: 50,
         };
 
@@ -383,9 +383,9 @@ describe("Settlements API", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // PUT /api/settlements/:id
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Update Settlement", () => {
     describe("when updating own settlement", () => {
       it("should update the settlement amount successfully", async () => {
@@ -393,7 +393,7 @@ describe("Settlements API", () => {
           _id: "s1",
           group: groupId,
           from: mockUser2._id,
-          to: mockUser._id, // Current user is the recipient
+          to: mockUser._id, 
           amount: 50,
           save: jest.fn().mockResolvedValue(true),
           populate: jest.fn().mockReturnThis(),
@@ -431,7 +431,7 @@ describe("Settlements API", () => {
           _id: "s1",
           group: groupId,
           from: mockUser._id,
-          to: mockUser2._id, // Different user is the recipient
+          to: mockUser2._id, 
           amount: 50,
         };
 
@@ -480,9 +480,9 @@ describe("Settlements API", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // Create Settlement with 'from' field (bidirectional)
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Create Settlement (recording payment received)", () => {
     describe("when creating with 'from' field", () => {
       it("should create settlement where logged-in user is recipient", async () => {
@@ -492,7 +492,7 @@ describe("Settlements API", () => {
           _id: "s1",
           group: groupId,
           from: mockUser2._id,
-          to: mockUser._id, // Logged-in user as recipient
+          to: mockUser._id, 
           amount: 50,
           save: jest.fn().mockResolvedValue(true),
           populate: jest.fn().mockResolvedValue({
@@ -512,7 +512,7 @@ describe("Settlements API", () => {
           .set("Authorization", `Bearer ${validToken}`)
           .send({
             groupId: groupId,
-            from: mockUser2._id, // Recording that mockUser2 paid mockUser
+            from: mockUser2._id, 
             amount: 50,
           });
 
@@ -538,9 +538,9 @@ describe("Settlements API", () => {
     });
   });
 
-  // ───────────────────────────────────────────────
-  // Settlement Amount Boundary Value Analysis
-  // ───────────────────────────────────────────────
+  
+  
+  
   describe("Settlement Amount Boundary Value Analysis", () => {
     beforeEach(() => {
       Group.findById = jest.fn().mockResolvedValue(mockGroup);

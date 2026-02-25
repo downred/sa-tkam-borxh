@@ -32,7 +32,7 @@ const mockGroup = {
 
 describe("API", () => {
   beforeAll(async () => {
-    // Given the test environment is configured
+    
     process.env.JWT_SECRET = "test-secret-key";
     process.env.MONGODB_URI = "mongodb://localhost:27017/test-db";
 
@@ -48,9 +48,9 @@ describe("API", () => {
   });
 
   beforeEach(() => {
-    // Reset mocks but keep implementations
+    
     jest.clearAllMocks();
-    // Default auth mock for protected routes
+    
     User.findById = jest.fn().mockResolvedValue(mockUser);
   });
 
@@ -64,10 +64,10 @@ describe("API", () => {
   describe("Root Endpoint", () => {
     describe("GET /api", () => {
       it("should return a welcome message", async () => {
-        // When requesting the root endpoint
+        
         const response = await request(app).get("/api");
 
-        // Then it should return success with welcome message
+        
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty("message");
         expect(response.body.message).toBe("Welcome to saTkamBorxh API");
@@ -79,28 +79,28 @@ describe("API", () => {
     describe("User Registration", () => {
       describe("when required fields are missing", () => {
         it("should reject the request with 400 status", async () => {
-          // Given a registration request without name and password
+          
           const response = await request(app)
             .post("/api/auth/register")
             .send({ email: "test@example.com" });
 
-          // Then it should return a validation error
+          
           expect(response.status).toBe(400);
           expect(response.body).toHaveProperty("error");
         });
       });
 
-      // TODO: implement email validation
+      
       describe("when email format is invalid", () => {
         it("should reject the request with validation error", async () => {
-          // Given a registration request with invalid email format
+          
           const response = await request(app).post("/api/auth/register").send({
             name: "Test User",
             email: "invalid-email",
             password: "password123",
           });
 
-          // Then it should return an email validation error
+          
           expect(response.status).toBe(400);
           expect(response.body.error).toContain("valid email");
         });
@@ -110,12 +110,12 @@ describe("API", () => {
     describe("User Login", () => {
       describe("when credentials are incomplete", () => {
         it("should reject the request with 400 status", async () => {
-          // Given a login request without password
+          
           const response = await request(app)
             .post("/api/auth/login")
             .send({ email: "test@example.com" });
 
-          // Then it should return a validation error
+          
           expect(response.status).toBe(400);
           expect(response.body.error).toBe("Please provide email and password");
         });
@@ -123,7 +123,7 @@ describe("API", () => {
 
       describe("when password is incorrect", () => {
         it("should reject the request with 401 status", async () => {
-          // Given a user exists in the database
+          
           User.findOne = jest.fn().mockReturnValue({
             select: jest.fn().mockResolvedValue({
               _id: "123",
@@ -133,13 +133,13 @@ describe("API", () => {
           });
           bcrypt.compare = jest.fn().mockResolvedValue(false);
 
-          // When attempting login with wrong password
+          
           const response = await request(app).post("/api/auth/login").send({
             email: "john@example.com",
             password: "wrongpassword",
           });
 
-          // Then it should return unauthorized
+          
           expect(response.status).toBe(401);
         });
       });
@@ -150,7 +150,7 @@ describe("API", () => {
     describe("Listing Expenses", () => {
       describe("when expenses exist", () => {
         it("should return an array of all expenses", async () => {
-          // Given expenses exist in the database
+          
           const mockExpenses = [
             {
               _id: "507f1f77bcf86cd799439011",
@@ -175,12 +175,12 @@ describe("API", () => {
             }),
           });
 
-          // When requesting all expenses for a group (with auth)
+          
           const response = await request(app)
             .get(`/api/groups/${mockGroup._id}/expenses`)
             .set("Authorization", `Bearer ${validToken}`);
 
-          // Then it should return the expenses array
+          
           expect(response.status).toBe(200);
           expect(Array.isArray(response.body)).toBe(true);
         });
@@ -190,13 +190,13 @@ describe("API", () => {
     describe("Creating Expense", () => {
       describe("when required fields are missing", () => {
         it("should reject the request with 400 status", async () => {
-          // Given an expense request with only description (with auth)
+          
           const response = await request(app)
             .post("/api/expenses")
             .set("Authorization", `Bearer ${validToken}`)
             .send({ description: "Test" });
 
-          // Then it should return a validation error
+          
           expect(response.status).toBe(400);
           expect(response.body).toHaveProperty("error");
         });
@@ -206,7 +206,7 @@ describe("API", () => {
     describe("Getting Single Expense", () => {
       describe("when expense does not exist", () => {
         it("should return 404 status", async () => {
-          // Given the expense is not found
+          
           Expense.findById = jest.fn().mockReturnValue({
             populate: jest.fn().mockReturnValue({
               populate: jest.fn().mockReturnValue({
@@ -215,12 +215,12 @@ describe("API", () => {
             }),
           });
 
-          // When requesting the non-existent expense (with auth)
+          
           const response = await request(app)
             .get("/api/expenses/507f1f77bcf86cd799439011")
             .set("Authorization", `Bearer ${validToken}`);
 
-          // Then it should return not found
+          
           expect(response.status).toBe(404);
           expect(response.body.error).toBe("Expense not found");
         });
@@ -230,15 +230,15 @@ describe("API", () => {
     describe("Deleting Expense", () => {
       describe("when expense does not exist", () => {
         it("should return 404 status", async () => {
-          // Given the expense is not found
+          
           Expense.findById = jest.fn().mockResolvedValue(null);
 
-          // When attempting to delete (with auth)
+          
           const response = await request(app)
             .delete("/api/expenses/507f1f77bcf86cd799439011")
             .set("Authorization", `Bearer ${validToken}`);
 
-          // Then it should return not found
+          
           expect(response.status).toBe(404);
           expect(response.body.error).toBe("Expense not found");
         });
@@ -250,7 +250,7 @@ describe("API", () => {
     describe("Listing Users", () => {
       describe("when users exist", () => {
         it("should return an array of all users", async () => {
-          // Given users exist in the database
+          
           const mockUsers = [
             {
               _id: "507f1f77bcf86cd799439011",
@@ -264,12 +264,12 @@ describe("API", () => {
             sort: jest.fn().mockResolvedValue(mockUsers),
           });
 
-          // When requesting all users (with auth)
+          
           const response = await request(app)
             .get("/api/users")
             .set("Authorization", "Bearer " + validToken);
 
-          // Then it should return the users array
+          
           expect(response.status).toBe(200);
           expect(Array.isArray(response.body)).toBe(true);
         });
@@ -279,17 +279,17 @@ describe("API", () => {
     describe("Getting Single User", () => {
       describe("when user does not exist", () => {
         it("should return 404 status", async () => {
-          // Given the user is not found
+          
           User.findById = jest.fn()
-            .mockResolvedValueOnce(mockUser) // For auth middleware
-            .mockResolvedValueOnce(null);    // For getUserById
+            .mockResolvedValueOnce(mockUser) 
+            .mockResolvedValueOnce(null);    
 
-          // When requesting the non-existent user (with auth)
+          
           const response = await request(app)
             .get("/api/users/507f1f77bcf86cd799439011")
             .set("Authorization", "Bearer " + validToken);
 
-          // Then it should return not found
+          
           expect(response.status).toBe(404);
           expect(response.body.error).toBe("User not found");
         });
@@ -301,7 +301,7 @@ describe("API", () => {
     describe("User Registration Password Length", () => {
       describe("when password is at minimum boundary (6 chars)", () => {
         it("should accept the password", async () => {
-          // Given a registration request with exactly 6 character password
+          
           User.findOne = jest.fn().mockResolvedValue(null);
           User.create = jest.fn().mockResolvedValue({
             _id: "123",
@@ -312,31 +312,31 @@ describe("API", () => {
           const response = await request(app).post("/api/auth/register").send({
             name: "Test User",
             email: "test@example.com",
-            password: "123456", // Exactly 6 characters
+            password: "123456", 
           });
 
-          // Then it should succeed
+          
           expect(response.status).toBe(201);
         });
       });
 
       describe("when password is below minimum boundary (5 chars)", () => {
         it("should reject the password", async () => {
-          // Given a registration request with 5 character password
+          
           const response = await request(app).post("/api/auth/register").send({
             name: "Test User",
             email: "test@example.com",
-            password: "12345", // Below minimum
+            password: "12345", 
           });
 
-          // Then it should return validation error
+          
           expect(response.status).toBe(400);
         });
       });
 
       describe("when password is above minimum boundary (7 chars)", () => {
         it("should accept the password", async () => {
-          // Given a registration request with 7 character password
+          
           User.findOne = jest.fn().mockResolvedValue(null);
           User.create = jest.fn().mockResolvedValue({
             _id: "123",
@@ -347,10 +347,10 @@ describe("API", () => {
           const response = await request(app).post("/api/auth/register").send({
             name: "Test User",
             email: "test@example.com",
-            password: "1234567", // Above minimum
+            password: "1234567", 
           });
 
-          // Then it should succeed
+          
           expect(response.status).toBe(201);
         });
       });
@@ -360,19 +360,19 @@ describe("API", () => {
   describe("Get Current User (Auth Me)", () => {
     describe("when token is valid", () => {
       it("should return user data", async () => {
-        // Given a valid authenticated user
+        
         User.findById = jest.fn().mockResolvedValue({
           _id: "123",
           name: "John Doe",
           email: "john@example.com",
         });
 
-        // When requesting current user
+        
         const response = await request(app)
           .get("/api/auth/me")
           .set("Authorization", `Bearer ${validToken}`);
 
-        // Then it should return user data
+        
         expect(response.status).toBe(200);
         expect(response.body.data).toHaveProperty("name");
         expect(response.body.data).toHaveProperty("email");
@@ -381,22 +381,22 @@ describe("API", () => {
 
     describe("when token is missing", () => {
       it("should return 401 status", async () => {
-        // When requesting without token
+        
         const response = await request(app).get("/api/auth/me");
 
-        // Then it should return unauthorized
+        
         expect(response.status).toBe(401);
       });
     });
 
     describe("when token is invalid", () => {
       it("should return 401 status", async () => {
-        // When requesting with invalid token
+        
         const response = await request(app)
           .get("/api/auth/me")
           .set("Authorization", "Bearer invalid-token");
 
-        // Then it should return unauthorized
+        
         expect(response.status).toBe(401);
       });
     });

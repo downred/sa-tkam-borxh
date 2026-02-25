@@ -3,7 +3,6 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useGroupsStore } from '../groups'
 import { groupService } from '../../services/groupService'
 
-// Mock the groupService
 vi.mock('../../services/groupService', () => ({
   groupService: {
     getAll: vi.fn(),
@@ -21,7 +20,7 @@ describe('Groups Store', () => {
   let store
 
   beforeEach(() => {
-    // Create a fresh Pinia instance for each test
+    
     setActivePinia(createPinia())
     store = useGroupsStore()
     vi.clearAllMocks()

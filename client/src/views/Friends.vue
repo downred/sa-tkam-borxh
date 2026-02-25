@@ -1,6 +1,6 @@
 <template>
   <div class="friends-page">
-    <!-- Header -->
+    
     <div class="friends-header">
       <h1 class="friends-title">Friends</h1>
       <button class="add-friend-btn" @click="showAddFriend = true">
@@ -8,19 +8,19 @@
       </button>
     </div>
 
-    <!-- Loading State -->
+    
     <div v-if="loading" class="friends-loading">
       <Loader2 class="w-8 h-8 animate-spin text-primary-500" />
     </div>
 
-    <!-- Empty State -->
+    
     <div v-else-if="friends.length === 0" class="friends-empty">
       <Users class="w-16 h-16 text-secondary-300 mb-4" />
       <p class="text-secondary-500 text-lg">No friends yet</p>
       <p class="text-secondary-400 text-sm mt-1">Add friends to split expenses with them</p>
     </div>
 
-    <!-- Friends List -->
+    
     <div v-else class="friends-list">
       <div 
         v-for="friend in friends" 
@@ -46,7 +46,7 @@
       </div>
     </div>
 
-    <!-- Add Friend Modal -->
+    
     <div v-if="showAddFriend" class="modal-overlay" @click.self="closeAddFriend">
       <div class="modal-content">
         <div class="modal-header">
@@ -82,7 +82,7 @@
       </div>
     </div>
 
-    <!-- Error Toast -->
+    
     <div v-if="error" class="error-toast">
       {{ error }}
     </div>
@@ -222,7 +222,6 @@ onMounted(fetchFriends)
   @apply hover:bg-red-50 transition-colors disabled:opacity-50;
 }
 
-// Modal styles
 .modal-overlay {
   @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
 }

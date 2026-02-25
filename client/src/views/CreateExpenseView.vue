@@ -8,7 +8,7 @@
     </div>
 
     <div class="create-expense-card">
-      <!-- Loading -->
+      
       <div v-if="loading" class="loading-state">
         <Loader2 class="w-8 h-8 animate-spin text-primary-500" />
       </div>

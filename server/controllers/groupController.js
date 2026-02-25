@@ -2,7 +2,6 @@ const Group = require('../models/Group');
 const Expense = require('../models/Expense');
 const Settlement = require('../models/Settlement');
 
-// Helper: Calculate a single user's balance in a group
 const getUserBalanceInGroup = async (groupId, userId) => {
   let balance = 0;
   
@@ -45,7 +44,7 @@ exports.getAllGroups = async (req, res) => {
     .populate('createdBy', 'name email')
     .sort({ createdAt: -1 });
     
-    // Calculate balance for each group
+    
     const groupsWithBalance = await Promise.all(
       groups.map(async (group) => {
         const balance = await getUserBalanceInGroup(group._id, req.user._id.toString());
@@ -64,7 +63,7 @@ exports.getAllGroups = async (req, res) => {
 
 exports.getTotalBalance = async (req, res) => {
   try {
-    // Get all groups user is a member of
+    
     const groups = await Group.find({ 
       $or: [
         { createdBy: req.user._id },
@@ -74,13 +73,13 @@ exports.getTotalBalance = async (req, res) => {
     
     let totalBalance = 0;
     
-    // Calculate balance for each group
+    
     for (const group of groups) {
       const balance = await getUserBalanceInGroup(group._id, req.user._id.toString());
       totalBalance += balance;
     }
     
-    // Round to 2 decimal places
+    
     totalBalance = Math.round(totalBalance * 100) / 100;
     
     res.json({ 
@@ -116,8 +115,17 @@ exports.createGroup = async (req, res) => {
   try {
     const { name, type, startDate, endDate, renewalDate, settleUpReminders } = req.body;
     
-    if (!name) {
+    if (!name || name.trim() === '') {
       return res.status(400).json({ error: 'Group name is required' });
+    }
+
+    if (name.trim().length > 50) {
+      return res.status(400).json({ error: 'Group name cannot exceed 50 characters' });
+    }
+
+    const validTypes = ['Trip', 'Home', 'Family', 'Subscription', 'Other'];
+    if (!type || !validTypes.includes(type)) {
+      return res.status(400).json({ error: 'Invalid group type' });
     }
     
     const groupData = {
@@ -128,11 +136,11 @@ exports.createGroup = async (req, res) => {
       settleUpReminders: settleUpReminders || false
     };
 
-    // Add trip-specific fields
+    
     if (startDate) groupData.startDate = startDate;
     if (endDate) groupData.endDate = endDate;
     
-    // Add subscription-specific field
+    
     if (renewalDate) groupData.renewalDate = renewalDate;
 
     const group = await Group.create(groupData);
@@ -174,7 +182,7 @@ exports.deleteGroup = async (req, res) => {
       return res.status(404).json({ error: 'Group not found' });
     }
     
-    // Only creator can delete
+    
     if (group.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: 'Not authorized to delete this group' });
     }
@@ -188,23 +196,37 @@ exports.deleteGroup = async (req, res) => {
 
 exports.addMember = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId, email } = req.body;
     
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
+    if (!userId && !email) {
+      return res.status(400).json({ error: 'User ID or email is required' });
     }
-    
+
     const group = await Group.findById(req.params.id);
-    
     if (!group) {
       return res.status(404).json({ error: 'Group not found' });
     }
+
+    if (group.members.length >= 50) {
+      return res.status(400).json({ error: 'Group has reached the maximum of 50 members' });
+    }
+
+    const User = require('../models/User');
+    let targetUserId = userId;
+
+    if (email && !userId) {
+      const user = await User.findOne({ email: email.toLowerCase() });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      targetUserId = user._id;
+    }
     
-    if (group.members.includes(userId)) {
+    if (group.members.map(m => m.toString()).includes(targetUserId.toString())) {
       return res.status(400).json({ error: 'User is already a member' });
     }
     
-    group.members.push(userId);
+    group.members.push(targetUserId);
     await group.save();
     
     await group.populate('members', 'name email');
@@ -226,12 +248,12 @@ exports.removeMember = async (req, res) => {
       return res.status(404).json({ error: 'Group not found' });
     }
     
-    // Cannot remove the creator
+    
     if (userId === group.createdBy.toString()) {
       return res.status(400).json({ error: 'Cannot remove the group creator' });
     }
     
-    // Check if user has unsettled balance
+    
     const userBalance = await getUserBalanceInGroup(req.params.id, userId);
     if (userBalance !== 0) {
       const status = userBalance > 0 ? 'is owed' : 'owes';
